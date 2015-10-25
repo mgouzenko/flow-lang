@@ -9,9 +9,4 @@ let _ =
   else Compile in
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.program Scanner.token lexbuf in
-  match action with
-    Ast -> ()
-  | Interpret -> ()
-  | Bytecode -> ()
-  | Compile -> ()
- 
+  print_endline "Success!"
