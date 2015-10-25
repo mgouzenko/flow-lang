@@ -10,11 +10,8 @@ let _ =
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.program Scanner.token lexbuf in
   match action with
-    Ast -> let listing = Ast.string_of_program program
-           in print_string listing
-  | Interpret -> ignore (Interpret.run program)
-  | Bytecode -> let listing =
-      Bytecode.string_of_prog (Compile.translate program)
-    in print_endline listing
-  | Compile -> Execute.execute_prog (Compile.translate program)
+    Ast -> ()
+  | Interpret -> ()
+  | Bytecode -> ()
+  | Compile -> () (*Execute.execute_prog (Compile.translate program)*)
  
