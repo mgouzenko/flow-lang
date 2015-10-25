@@ -13,5 +13,5 @@ let _ =
     Ast -> ()
   | Interpret -> ()
   | Bytecode -> ()
-  | Compile -> () (*Execute.execute_prog (Compile.translate program)*)
+  | Compile -> ()
  
