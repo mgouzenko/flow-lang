@@ -2,30 +2,57 @@
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
-| '#'     { comment lexbuf }           (* Comments *)
-| '('      { LPAREN }
-| ')'      { RPAREN }
-| '{'      { LBRACE }
-| '}'      { RBRACE }
-| ';'      { SEMI }
-| ','      { COMMA }
-| '+'      { PLUS }
-| '-'      { MINUS }
-| '*'      { TIMES }
-| '/'      { DIVIDE }
-| '='      { ASSIGN }
-| "=="     { EQ }
-| "!="     { NEQ }
-| '<'      { LT }
-| "<="     { LEQ }
-| ">"      { GT }
-| ">="     { GEQ }
-| "if"     { IF }
-| "else"   { ELSE }
-| "for"    { FOR }
-| "while"  { WHILE }
-| "return" { RETURN }
-| "int"    { INT }
+| '#'           { comment lexbuf }           (* Comments *)
+| '('           { LPAREN }
+| ')'           { RPAREN }
+| '{'           { LBRACE }
+| '}'           { RBRACE }
+| '['           { LBRACKET}
+| ']'           { RBRACKET}
+| ';'           { SEMI }
+| ','           { COMMA }
+| '+'           { PLUS }
+| '-'           { MINUS }
+| '*'           { TIMES }
+| '/'           { DIVIDE }
+| '='           { ASSIGN }
+| "=="          { EQ }
+| "!="          { NEQ }
+| '<'           { LT }
+| "<="          { LEQ }
+| ">"           { GT }
+| ">="          { GEQ }
+| "++"          { INCREMENT }
+| "--"          { DECREMENT }
+| "<<"          { SHIFT_LEFT}
+| ">>"          { SHIFT_RIGHT}
+| '~'           { BIT_NOT}
+| '!'           { NEGATE }
+| '|'           { BIT_OR }
+| '&'           { BIT_AND }
+| "||"          { OR }
+| "&&"          { AND }
+| '%'           { MODULO }
+| '@'           { READ_CHANNEL }
+| "->"          { WRITE_CHANNEL }
+| "if"          { IF }
+| "else"        { ELSE }
+| "for"         { FOR }
+| "while"       { WHILE }
+| "return"      { RETURN }
+| "int"         { INT }
+| "double"      { DOUBLE}
+| "char"        { CHAR }
+| "bool"        { BOOL }
+| "break"       { BREAK }
+| "string"      { STRING }
+| "list"        { LIST }
+| "continue"    { CONTINUE }
+| "in"          { IN }
+| "out"         { OUT }
+| "channel"     { CHANNEL }
+| "proc"        { PROC }
+
 | ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
