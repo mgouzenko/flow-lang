@@ -18,7 +18,7 @@
 %token <string> ID
 %token EOF
 
-%nonassoc NOELSE 
+%nonassoc NOELSE /* wtf is this */
 %nonassoc ELSE
 %right ASSIGN
 %left AND OR
@@ -37,13 +37,44 @@
 
 %%
 
+/*program:
+    declaration-stmt { $1 }
+  | function_declaration { $1 }
+  | process_declaration { $1 }
+  | program program { $1 }
+  | program EOF { $1 }
+*/
+
 program:
   decls EOF { $1 }
 
 decls:
    /* nothing */ { [], [] }
- | decls vdecl { ($2 :: fst $1), snd $1 }
- | decls fdecl { fst $1, ($2 :: snd $1) }
+ | decls declaration_stmt { [], [] }
+ | decls function_declaration { [], [] }
+ | decls process_declaration { [], [] }
+ /*| decls vdecl { ($2 :: fst $1), snd $1 }
+ | decls fdecl { fst $1, ($2 :: snd $1) }*/
+
+declaration_stmt:
+    primitive_declaration
+  | string_declaration
+  | list_declaration
+  | struct_declaration
+  | struct_instance_declaration
+  | channel_declaration
+  | function_declaration
+
+function_declaration:
+    return_type IDENTIFIER ( arg_declaration_list );
+
+return_type: 
+    PRIMTIVE_TYPE
+  | string
+  | LIST_TYPE list
+  | IDENTIFIER
+  | void
+
 
 fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
