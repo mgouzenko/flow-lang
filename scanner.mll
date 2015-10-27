@@ -1,5 +1,10 @@
 { open Parser }
 
+(* Definitions *)
+
+let digit = ['0'-'9']
+let double = ((digit+ '.' digit*) | ('.' digit+))  
+
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | '#'           { comment lexbuf }           (* Comments *)
@@ -40,7 +45,7 @@ rule token = parse
 | "for"         { FOR }
 | "while"       { WHILE }
 | "return"      { RETURN }
-| "int"         { INT } 
+| "int"         { INT }
 | "double"      { DOUBLE }
 | "char"        { CHAR }
 | "bool"        { BOOL }
@@ -56,7 +61,10 @@ rule token = parse
 | "struct"      { STRUCT }
 | "true"        { BOOL_LITERAL(true) }
 | "false"       { BOOL_LITERAL(false) }
-| ['0'-'9']+ as lxm { INT_LITERAL(int_of_string lxm) }
+| digit+ as lxm { INT_LITERAL(int_of_string lxm) }
+| double as lxm { DOUBLE_LITERAL(float_of_string lxm)}
+| '\"' ([^'\"']* as lxm) '\"' { STRING_LITERAL(lxm) }
+| '\'' ([' '-'&' '('-'[' ']'-'~'] as lxm) '\'' { CHAR_LITERAL(lxm) }
 | ['_' 'a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { IDENTIFIER(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
