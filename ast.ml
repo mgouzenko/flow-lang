@@ -31,7 +31,7 @@ type func_decl = (*{
   }
   |*) Todo
 
-type program = string list * func_decl list
+type program = Todo(*string list * func_decl list*)
 
 (*
 let rec string_of_expr = function

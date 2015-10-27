@@ -28,7 +28,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
-%right BIT_NOT NOT
+%right BIT_NOT NEGATE
 %left WRITE_CHANNEL READ_CHANNEL
 %left DOT
 
@@ -46,13 +46,13 @@
 */
 
 program:
-  decls EOF { $1 }
+  decls EOF { Todo }
 
 decls:
-    /* nothing */ { [], [] }
-  | decls declaration_stmt { [], [] }
-  | decls function_declaration { [], [] }
-  | decls process_declaration { [], [] }
+    /* nothing */ { Todo }
+  | decls declaration_stmt { Todo }
+  | decls function_declaration { Todo }
+  | decls process_declaration { Todo }
 /*| decls vdecl { ($2 :: fst $1), snd $1 }
   | decls fdecl { fst $1, ($2 :: snd $1) }*/
 
@@ -66,13 +66,16 @@ declaration_stmt:
 
 function_declaration:
     function_declarator SEMI {Todo}
+  | function_declarator LBRACE RBRACE {Todo}
   | function_declarator LBRACE stmt_list RBRACE {Todo}
 
 function_declarator:
-    primitive_type IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo}
+    primitive_type IDENTIFIER LPAREN RPAREN {Todo}
+  | primitive_type IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo} 
 
 process_declaration:
     process_declarator SEMI {Todo}
+  | process_declarator LBRACE RBRACE {Todo}
   | process_declarator LBRACE stmt_list RBRACE {Todo}
 
 process_declarator:
@@ -175,7 +178,7 @@ jump_stmt:
   | BREAK SEMI {Todo}
 
 expr_opt:
-    /* nothing */ {Noexpr} 
+    /* nothing */ {Todo} 
   | expr {Todo}
 
 iteration_stmt:
@@ -183,7 +186,8 @@ iteration_stmt:
   | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt {Todo}
 
 arg_declaration_list:
-    arg_declaration {Todo}
+    /* nothing */
+  | arg_declaration {Todo}
   | arg_declaration_list COMMA arg_declaration {Todo}
 
 arg_declaration:
@@ -230,7 +234,7 @@ expr:
   | IDENTIFIER LBRACKET INT_LITERAL RBRACKET {Todo}
   | LPAREN expr RPAREN {Todo}
   | BIT_NOT expr {Todo}
-  | NOT expr {Todo}
+  | NEGATE expr {Todo}
 
 function_call:
     IDENTIFIER LPAREN RPAREN {Todo}
