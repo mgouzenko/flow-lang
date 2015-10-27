@@ -3,6 +3,7 @@
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | '#'           { comment lexbuf }           (* Comments *)
+| '.'           { DOT }
 | '('           { LPAREN }
 | ')'           { RPAREN }
 | '{'           { LBRACE }
@@ -22,14 +23,13 @@ rule token = parse
 | "<="          { LEQ }
 | ">"           { GT }
 | ">="          { GEQ }
-| "++"          { INCREMENT }
-| "--"          { DECREMENT }
-| "<<"          { SHIFT_LEFT}
-| ">>"          { SHIFT_RIGHT}
+| "<<"          { SHIFT_LEFT }
+| ">>"          { SHIFT_RIGHT }
 | '~'           { BIT_NOT}
 | '!'           { NEGATE }
 | '|'           { BIT_OR }
 | '&'           { BIT_AND }
+| '^'           { BIT_XOR }
 | "||"          { OR }
 | "&&"          { AND }
 | '%'           { MODULO }
@@ -41,7 +41,7 @@ rule token = parse
 | "while"       { WHILE }
 | "return"      { RETURN }
 | "int"         { INT }
-| "double"      { DOUBLE}
+| "double"      { DOUBLE }
 | "char"        { CHAR }
 | "bool"        { BOOL }
 | "break"       { BREAK }
@@ -57,7 +57,7 @@ rule token = parse
 | "true"        { BOOL_LITERAL(true) }
 | "false"       { BOOL_LITERAL(false) }
 | ['0'-'9']+ as lxm { INT_LITERAL(int_of_string lxm) }
-| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+| ['_' 'a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
