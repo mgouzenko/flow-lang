@@ -15,7 +15,7 @@
 %token <char> CHAR_LITERAL
 %token <bool> BOOL_LITERAL
 %token <string> STRING_LITERAL
-%token <string> ID
+%token <string> IDENTIFIER
 %token EOF
 
 %nonassoc NOELSE /* wtf is this */
@@ -49,97 +49,189 @@ program:
   decls EOF { $1 }
 
 decls:
-   /* nothing */ { [], [] }
- | decls declaration_stmt { [], [] }
- | decls function_declaration { [], [] }
- | decls process_declaration { [], [] }
- /*| decls vdecl { ($2 :: fst $1), snd $1 }
- | decls fdecl { fst $1, ($2 :: snd $1) }*/
+    /* nothing */ { [], [] }
+  | decls declaration_stmt { [], [] }
+  | decls function_declaration { [], [] }
+  | decls process_declaration { [], [] }
+/*| decls vdecl { ($2 :: fst $1), snd $1 }
+  | decls fdecl { fst $1, ($2 :: snd $1) }*/
 
 declaration_stmt:
-    primitive_declaration
-  | string_declaration
-  | list_declaration
-  | struct_declaration
-  | struct_instance_declaration
-  | channel_declaration
-  | function_declaration
+    primitive_declaration {Todo}
+  | string_declaration {Todo}
+  | list_declaration {Todo}
+  | struct_declaration {Todo}
+  | struct_instance_declaration {Todo}
+  | channel_declaration {Todo}
 
 function_declaration:
-    return_type IDENTIFIER ( arg_declaration_list );
+    function_declarator SEMI {Todo}
+  | function_declarator LBRACE stmt_list RBRACE {Todo}
 
-return_type: 
-    PRIMTIVE_TYPE
-  | string
-  | LIST_TYPE list
-  | IDENTIFIER
-  | void
+function_declarator:
+    primitive_type IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo}
 
+process_declaration:
+    process_declarator SEMI {Todo}
+  | process_declarator LBRACE stmt_list RBRACE {Todo}
 
-fdecl:
-   ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { fname = $1;
-	 formals = $3;
-	 locals = List.rev $6;
-	 body = List.rev $7 } }
+process_declarator:
+    PROC IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo}
 
-formals_opt:
-    /* nothing */ { [] }
-  | formal_list   { List.rev $1 }
+primitive_declaration:
+    primitive_declarator SEMI {Todo}
+  | primitive_declarator ASSIGN expr SEMI {Todo}
 
-formal_list:
-    ID                   { [$1] }
-  | formal_list COMMA ID { $3 :: $1 }
+primitive_declarator:
+    primitive_type IDENTIFIER {Todo}
 
-vdecl_list:
-    /* nothing */    { [] }
-  | vdecl_list vdecl { $2 :: $1 }
+primitive_type:
+    INT {Todo}
+  | DOUBLE {Todo}
+  | CHAR {Todo}
+  | BOOL {Todo}
+  | VOID {Todo}
 
-vdecl:
-   INT ID SEMI { $2 }
+string_declaration:
+    string_declarator SEMI {Todo}
+  | string_declarator ASSIGN STRING_LITERAL SEMI {Todo}
+
+string_declarator:
+    STRING IDENTIFIER {Todo}
+
+list_declarator: 
+    list_type LIST IDENTIFIER { Todo }
+
+list_type:
+    primitive_type {Todo}
+  | STRING {Todo}
+  | IDENTIFIER {Todo}
+
+list_declaration:
+    list_declarator SEMI {Todo}
+  | list_declarator ASSIGN list_initializer SEMI {Todo}
+
+list_initializer: 
+    LBRACKET expr_list RBRACKET {Todo}
+
+struct_declaration:
+    STRUCT IDENTIFIER LBRACE struct_member_list RBRACE {Todo}
+
+struct_member_list:
+    struct_member_declarator {Todo}
+  | struct_member_list COMMA struct_member_declarator {Todo}
+
+struct_member_declarator:
+    primitive_declarator {Todo}
+  | string_declarator {Todo}
+  | list_declarator {Todo}
+  | struct_instance_declarator {Todo}
+
+struct_instance_declarator:
+    IDENTIFIER IDENTIFIER {Todo}
+
+struct_instance_declaration:
+    struct_instance_declarator SEMI {Todo}
+  | struct_instance_declarator ASSIGN LBRACE dot_initializer_list RBRACE {Todo}
+
+dot_initializer_list:
+    DOT IDENTIFIER ASSIGN expr {Todo}
+  | DOT IDENTIFIER ASSIGN expr COMMA dot_initializer_list {Todo}
+
+channel_declaration: 
+    channel_type CHANNEL IDENTIFIER SEMI {Todo}
+
+channel_type:
+    primitive_type {Todo}
+  | STRING {Todo}
+  | IDENTIFIER {Todo}
 
 stmt_list:
-    /* nothing */  { [] }
-  | stmt_list stmt { $2 :: $1 }
+    stmt {Todo}
+  | stmt stmt_list {Todo}
 
 stmt:
-    expr SEMI { Expr($1) }
-  | RETURN expr SEMI { Return($2) }
-  | LBRACE stmt_list RBRACE { Block(List.rev $2) }
-  | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
-  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
-     { For($3, $5, $7, $9) }
-  | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
+    expr_stmt {Todo}
+  | compound_stmt {Todo}
+  | selection_stmt {Todo}
+  | iteration_stmt {Todo}
+  | declaration_stmt {Todo}
+  | jump_stmt {Todo}
+
+expr_stmt: 
+    expr SEMI {Todo}
+
+compound_stmt:
+    LBRACE stmt_list RBRACE {Todo}
+
+selection_stmt:
+    IF LPAREN expr RPAREN stmt %prec NOELSE {Todo}
+  | IF LPAREN expr RPAREN stmt ELSE stmt {Todo}
+
+jump_stmt:
+    RETURN expr SEMI {Todo}
+  | RETURN SEMI {Todo}
+  | CONTINUE SEMI {Todo}
+  | BREAK SEMI {Todo}
 
 expr_opt:
-    /* nothing */ { Noexpr }
-  | expr          { $1 }
+    /* nothing */ {Noexpr} 
+  | expr {Todo}
+
+iteration_stmt:
+    WHILE LPAREN expr RPAREN stmt {Todo}
+  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt {Todo}
+
+arg_declaration_list:
+    arg_declaration {Todo}
+  | arg_declaration_list COMMA arg_declaration {Todo}
+
+arg_declaration:
+    primitive_declarator {Todo}
+  | list_declarator {Todo}
+  | IDENTIFIER IDENTIFIER {Todo}
+  | IN channel_type IDENTIFIER {Todo}
+  | OUT channel_type IDENTIFIER {Todo}
+
+expr_list:
+    expr {Todo}
+  | expr COMMA expr_list {Todo}
 
 expr:
-    INT_LITERAL      { Todo }
-  | CHAR_LITERAL     { Todo }
-  | BOOL_LITERAL     { Todo }
-  | STRING_LITERAL   { Todo }
-  | ID               { Id($1) }
-  | expr PLUS   expr { Binop($1, Add,   $3) }
-  | expr MINUS  expr { Binop($1, Sub,   $3) }
-  | expr TIMES  expr { Binop($1, Mult,  $3) }
-  | expr DIVIDE expr { Binop($1, Div,   $3) }
-  | expr EQ     expr { Binop($1, Equal, $3) }
-  | expr NEQ    expr { Binop($1, Neq,   $3) }
-  | expr LT     expr { Binop($1, Less,  $3) }
-  | expr LEQ    expr { Binop($1, Leq,   $3) }
-  | expr GT     expr { Binop($1, Greater,  $3) }
-  | expr GEQ    expr { Binop($1, Geq,   $3) }
-  | ID ASSIGN expr   { Assign($1, $3) }
-  | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
-  | LPAREN expr RPAREN { $2 }
+    INT_LITERAL {Todo}  
+  | DOUBLE_LITERAL {Todo}
+  | STRING_LITERAL {Todo}
+  | CHAR_LITERAL {Todo}
+  | BOOL_LITERAL {Todo}
+  | IDENTIFIER {Todo}
+  | READ_CHANNEL IDENTIFIER {Todo}
+  | expr WRITE_CHANNEL IDENTIFIER {Todo}
+  | function_call {Todo}
+  | expr PLUS expr {Todo}
+  | expr MINUS expr {Todo}
+  | expr TIMES expr {Todo}
+  | expr DIVIDE expr {Todo}
+  | expr MODULO expr {Todo}
+  | expr EQ expr {Todo}
+  | expr NEQ expr {Todo}
+  | expr LT expr {Todo}
+  | expr GT expr {Todo}
+  | expr LEQ expr {Todo}
+  | expr GEQ expr {Todo}
+  | expr SHIFT_LEFT expr {Todo}
+  | expr SHIFT_RIGHT expr {Todo}
+  | expr BIT_XOR expr {Todo}
+  | expr BIT_AND expr {Todo}
+  | expr BIT_OR expr {Todo}
+  | expr AND expr {Todo}
+  | expr OR expr {Todo}
+  | IDENTIFIER ASSIGN expr {Todo}
+  | IDENTIFIER LBRACKET INT_LITERAL RBRACKET ASSIGN expr {Todo}
+  | IDENTIFIER LBRACKET INT_LITERAL RBRACKET {Todo}
+  | LPAREN expr RPAREN {Todo}
+  | BIT_NOT expr {Todo}
+  | NOT expr {Todo}
 
-actuals_opt:
-    /* nothing */ { [] }
-  | actuals_list  { List.rev $1 }
-
-actuals_list:
-    expr                    { [$1] }
-  | actuals_list COMMA expr { $3 :: $1 }
+function_call:
+    IDENTIFIER LPAREN RPAREN {Todo}
+  | IDENTIFIER LPAREN expr_list RPAREN {Todo}

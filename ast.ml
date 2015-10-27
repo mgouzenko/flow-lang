@@ -21,13 +21,15 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
+  | Todo
 
-type func_decl = {
+type func_decl = (*{
     fname : string;
     formals : string list;
     locals : string list;
     body : stmt list;
   }
+  |*) Todo
 
 type program = string list * func_decl list
 

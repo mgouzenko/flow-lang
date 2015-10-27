@@ -40,7 +40,7 @@ rule token = parse
 | "for"         { FOR }
 | "while"       { WHILE }
 | "return"      { RETURN }
-| "int"         { INT }
+| "int"         { INT } 
 | "double"      { DOUBLE }
 | "char"        { CHAR }
 | "bool"        { BOOL }
@@ -57,7 +57,7 @@ rule token = parse
 | "true"        { BOOL_LITERAL(true) }
 | "false"       { BOOL_LITERAL(false) }
 | ['0'-'9']+ as lxm { INT_LITERAL(int_of_string lxm) }
-| ['_' 'a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+| ['_' 'a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { IDENTIFIER(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
