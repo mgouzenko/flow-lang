@@ -2,11 +2,17 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
     Literal of int
+  | Int_literal of int
+  | String_literal of string
+  | Bool_literal of bool
+  | Char_literal of char
+  | Double_literal of float
   | Id of string
   | Binop of expr * op * expr
   | Assign of string * expr
   | Call of string * expr list
   | Noexpr
+  | Todo
 
 type stmt =
     Block of stmt list
@@ -25,6 +31,7 @@ type func_decl = {
 
 type program = string list * func_decl list
 
+(*
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
@@ -63,4 +70,4 @@ let string_of_fdecl fdecl =
 
 let string_of_program (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl funcs)*)

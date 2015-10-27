@@ -1,10 +1,20 @@
 %{ open Ast %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
-%token PLUS MINUS TIMES DIVIDE ASSIGN
+%token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
+%token INCREMENT DECREMENT
+%token SHIFT_RIGHT SHIFT_LEFT BIT_OR BIT_NOT BIT_AND
+%token PLUS MINUS TIMES DIVIDE MODULO ASSIGN
+%token WRITE_CHANNEL READ_CHANNEL PROC CHANNEL IN OUT
+%token BREAK CONTINUE VOID
+%token OR AND NEGATE
+%token DOUBLE CHAR BOOL INT STRING LIST STRUCT 
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE INT
-%token <int> LITERAL
+%token <int> INT_LITERAL
+%token <float> DOUBLE_LITERAL
+%token <char> CHAR_LITERAL
+%token <bool> BOOL_LITERAL
+%token <string> STRING_LITERAL
 %token <string> ID
 %token EOF
 
@@ -70,7 +80,10 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-    LITERAL          { Literal($1) }
+    INT_LITERAL      { Todo }
+  | CHAR_LITERAL     { Todo }
+  | BOOL_LITERAL     { Todo }
+  | STRING_LITERAL   { Todo }
   | ID               { Id($1) }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }

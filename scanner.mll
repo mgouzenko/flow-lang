@@ -45,15 +45,18 @@ rule token = parse
 | "char"        { CHAR }
 | "bool"        { BOOL }
 | "break"       { BREAK }
+| "continue"    { CONTINUE }
 | "string"      { STRING }
 | "list"        { LIST }
-| "continue"    { CONTINUE }
 | "in"          { IN }
 | "out"         { OUT }
 | "channel"     { CHANNEL }
 | "proc"        { PROC }
-
-| ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
+| "void"        { VOID }
+| "struct"      { STRUCT }
+| "true"        { BOOL_LITERAL(true) }
+| "false"       { BOOL_LITERAL(false) }
+| ['0'-'9']+ as lxm { INT_LITERAL(int_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
