@@ -132,6 +132,7 @@ expr_stmt:
 
 compound_stmt:
     LBRACE stmt_list RBRACE {Block($2)}
+  | LBRACE RBRACE {Block([])}
 
 selection_stmt:
     IF LPAREN expr RPAREN stmt %prec NOELSE {If($3, $5, Expr(Noexpr))}
