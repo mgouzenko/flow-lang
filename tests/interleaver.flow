@@ -12,3 +12,10 @@ proc interleaver(int inchan1, int inchan2, int ochan){
 
 		}
 }
+
+struct node{
+	int val;
+	node next;
+}
+
+node foo;
