@@ -1,37 +1,84 @@
-type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
+type bin_op =
+        Plus | Minus | Times | Divide | Modulo
+    | Equal | Neq | Lt | Leq | Gt | Geq | Eq
+    | Send  | And | Or | Assign
 
-type expr =
-    Literal of int
-  | Int_literal of int
-  | String_literal of string
-  | Bool_literal of bool
-  | Char_literal of char
-  | Double_literal of float
+type unary_op = Retrieve | Negate | Not
+type direction = In | Out | Nodir
+
+(* All of the primitive and nonprimitive types *)
+type flow_type =
+      Int
+    | Float
+    | Double
+    | Bool
+    | Char
+    | Void
+    | Proc
+    | String
+    | Channel of flow_type * direction
+    | Struct of string    (* Needs a string representing struct type *)
+
+type dot_initializer = {
+    dot_initializer_id: string;
+    dot_initializer_val: expr;
+}
+
+and expr =
+    IntLiteral of int
+  | StringLiteral of string
+  | BoolLiteral of bool
+  | CharLiteral of char
+  | DoubleLiteral of float
+  | StructInitializer of dot_initializer list
   | Id of string
-  | Binop of expr * op * expr
+  | BinOp of expr * bin_op * expr
+  | UnaryOp of unary_op * expr
   | Assign of string * expr
   | Call of string * expr list
+  | FunctionCall of expr list
   | Noexpr
   | Todo
 
+type variable_declaration = {
+    declaration_type: flow_type;
+    declaration_id: string;
+    declaration_initializer: expr;
+}
+
 type stmt =
-    Block of stmt list
-  | Expr of expr
+    Expr of expr
+  | Block of stmt list
   | Return of expr
+  | Declaration of variable_declaration
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | Todo
+  | Continue
+  | Break
 
-type func_decl = (*{
-    fname : string;
-    formals : string list;
-    locals : string list;
+type function_declaration = {
+    return_type: flow_type;
+    process_name: string;
+    arguments: variable_declaration list;
     body : stmt list;
-  }
-  |*) Todo
+}
 
-type program = Todo(*string list * func_decl list*)
+type struct_declaration = {
+    struct_name: string;
+    struct_members: variable_declaration list;
+}
+
+type declaration =
+      VarDecl of variable_declaration
+    | FuncDecl of function_declaration
+    | StructDecl of struct_declaration
+
+type program = Declarations of declaration list
+
+
+
+(*string list * func_decl list*)
 
 (*
 let rec string_of_expr = function

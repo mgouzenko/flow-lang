@@ -6,10 +6,10 @@
 %token WRITE_CHANNEL READ_CHANNEL PROC CHANNEL IN OUT
 %token DOT
 %token BREAK CONTINUE VOID
-%token OR AND NEGATE
-%token DOUBLE CHAR BOOL INT STRING LIST STRUCT 
+%token OR AND NOT
+%token DOUBLE CHAR BOOL INT STRING LIST STRUCT
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR WHILE INT
+%token RETURN IF ELSE FOR WHILE
 %token <int> INT_LITERAL
 %token <float> DOUBLE_LITERAL
 %token <char> CHAR_LITERAL
@@ -18,7 +18,7 @@
 %token <string> IDENTIFIER
 %token EOF
 
-%nonassoc NOELSE /* wtf is this */
+%nonassoc NOELSE /* dummy variable for lowest precedence */
 %nonassoc ELSE
 %right ASSIGN
 %left AND OR
@@ -28,214 +28,163 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
-%right BIT_NOT NEGATE
 %left WRITE_CHANNEL READ_CHANNEL
 %left DOT
+%nonassoc UMINUS  /* dummy variable for highest precedence */
 
 %start program
 %type <Ast.program> program
 
 %%
 
-/*program:
-    declaration-stmt { $1 }
-  | function_declaration { $1 }
-  | process_declaration { $1 }
-  | program program { $1 }
-  | program EOF { $1 }
-*/
-
 program:
-  decls EOF { Todo }
+  declarations EOF {Declarations($1)}
 
-decls:
-    /* nothing */ { Todo }
-  | decls declaration_stmt { Todo }
-  | decls function_declaration { Todo }
-  | decls process_declaration { Todo }
-/*| decls vdecl { ($2 :: fst $1), snd $1 }
-  | decls fdecl { fst $1, ($2 :: snd $1) }*/
-
-declaration_stmt:
-    primitive_declaration {Todo}
-  | string_declaration {Todo}
-  | list_declaration {Todo}
-  | struct_declaration {Todo}
-  | struct_instance_declaration {Todo}
-  | channel_declaration {Todo}
+declarations:
+    /* nothing */ { [] }
+  | declarations var_declaration SEMI { VarDecl($2)::$1  }
+  | declarations function_declaration { FuncDecl($2)::$1 }
+  | declarations struct_declaration   { StructDecl($2)::$1 }
 
 function_declaration:
-    function_declarator SEMI {Todo}
-  | function_declarator LBRACE RBRACE {Todo}
-  | function_declarator LBRACE stmt_list RBRACE {Todo}
+    flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE stmt_list RBRACE
+    {
+        {
+            return_type = $1;
+            process_name = $2;
+            arguments = $4;
+            body = List.rev $7;
+        }
+    }
 
-function_declarator:
-    primitive_type IDENTIFIER LPAREN RPAREN {Todo}
-  | primitive_type IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo} 
+arg_decl_list:
+    /* nothing */ {[]}
+  | arg_decl {[$1]}
+  | arg_decl_list COMMA arg_decl {$3::$1}
 
-process_declaration:
-    process_declarator SEMI {Todo}
-  | process_declarator LBRACE RBRACE {Todo}
-  | process_declarator LBRACE stmt_list RBRACE {Todo}
+arg_decl:
+    simple_var_declaration {match $1.declaration_type with
+                              Channel(t, dir) when dir = Nodir ->
+                                  raise (Failure "Channel argument needs direction")
+                            | _ -> $1}
 
-process_declarator:
-    PROC IDENTIFIER LPAREN arg_declaration_list RPAREN {Todo}
+flow_type:
+    INT                       {Int}
+  | DOUBLE                    {Double}
+  | CHAR                      {Char}
+  | BOOL                      {Bool}
+  | VOID                      {Void}
+  | PROC                      {Proc}
+  | STRING                    {String}
+  | IDENTIFIER                {Struct($1)}
+  | CHANNEL '<' flow_type '>' {Channel($3, Nodir)}
+  | IN flow_type              {Channel($2, In)}
+  | OUT flow_type             {Channel($2, Out)}
 
-primitive_declaration:
-    primitive_declarator SEMI {Todo}
-  | primitive_declarator ASSIGN expr SEMI {Todo}
+var_declaration:
+    simple_var_declaration      {$1}
+  | init_var_declaration        {$1}
 
-primitive_declarator:
-    primitive_type IDENTIFIER {Todo}
+simple_var_declaration:
+    flow_type IDENTIFIER {{declaration_type = $1;
+                           declaration_id   = $2;
+                           declaration_initializer = Noexpr}}
 
-primitive_type:
-    INT {Todo}
-  | DOUBLE {Todo}
-  | CHAR {Todo}
-  | BOOL {Todo}
-  | VOID {Todo}
-
-string_declaration:
-    string_declarator SEMI {Todo}
-  | string_declarator ASSIGN STRING_LITERAL SEMI {Todo}
-
-string_declarator:
-    STRING IDENTIFIER {Todo}
-
-list_declarator: 
-    list_type LIST IDENTIFIER { Todo }
-
-list_type:
-    primitive_type {Todo}
-  | STRING {Todo}
-  | IDENTIFIER {Todo}
-
-list_declaration:
-    list_declarator SEMI {Todo}
-  | list_declarator ASSIGN list_initializer SEMI {Todo}
-
-list_initializer: 
-    LBRACKET expr_list RBRACKET {Todo}
+init_var_declaration:
+  | flow_type IDENTIFIER ASSIGN expr {{declaration_type = $1;
+                                       declaration_id   = $2;
+                                       declaration_initializer = $4}}
 
 struct_declaration:
-    STRUCT IDENTIFIER LBRACE struct_member_list RBRACE {Todo}
-
-struct_member_list:
-    struct_member_declarator {Todo}
-  | struct_member_list COMMA struct_member_declarator {Todo}
-
-struct_member_declarator:
-    primitive_declarator {Todo}
-  | string_declarator {Todo}
-  | list_declarator {Todo}
-  | struct_instance_declarator {Todo}
-
-struct_instance_declarator:
-    IDENTIFIER IDENTIFIER {Todo}
-
-struct_instance_declaration:
-    struct_instance_declarator SEMI {Todo}
-  | struct_instance_declarator ASSIGN LBRACE dot_initializer_list RBRACE {Todo}
+  STRUCT IDENTIFIER LBRACE stmt_list RBRACE {
+                                              let decls = List.map (fun e -> match e with
+                                                 Declaration(decl) -> decl
+                                               | _ -> raise (Failure ("Struct member " ^
+                                                            "definitions must be" ^
+                                                            "declarations"))) $4 in
+                                              {struct_name = $2;
+                                               struct_members = decls;
+                                              }
+                                            }
 
 dot_initializer_list:
-    DOT IDENTIFIER ASSIGN expr {Todo}
-  | DOT IDENTIFIER ASSIGN expr COMMA dot_initializer_list {Todo}
+    dot_initializer {[$1]}
+  | dot_initializer COMMA dot_initializer_list { $1::$3 }
 
-channel_declaration: 
-    channel_type CHANNEL IDENTIFIER SEMI {Todo}
-
-channel_type:
-    primitive_type {Todo}
-  | STRING {Todo}
-  | IDENTIFIER {Todo}
+dot_initializer:
+    DOT IDENTIFIER ASSIGN expr {{ dot_initializer_id = $2;
+                                  dot_initializer_val = $4 }}
 
 stmt_list:
-    stmt {Todo}
-  | stmt stmt_list {Todo}
+    /* Nothing */ {[]}
+  | stmt {[$1]}
+  | stmt stmt_list {$1::$2}
 
 stmt:
-    expr_stmt {Todo}
-  | compound_stmt {Todo}
-  | selection_stmt {Todo}
-  | iteration_stmt {Todo}
-  | declaration_stmt {Todo}
-  | jump_stmt {Todo}
+    expr_stmt        {$1}
+  | compound_stmt    {$1}
+  | selection_stmt   {$1}
+  | iteration_stmt   {$1}
+  | var_declaration SEMI {Declaration($1)}
+  | jump_stmt        {$1}
 
-expr_stmt: 
-    expr SEMI {Todo}
+expr_stmt:
+    expr SEMI {Expr($1)}
 
 compound_stmt:
-    LBRACE stmt_list RBRACE {Todo}
+    LBRACE stmt_list RBRACE {Block($2)}
 
 selection_stmt:
-    IF LPAREN expr RPAREN stmt %prec NOELSE {Todo}
-  | IF LPAREN expr RPAREN stmt ELSE stmt {Todo}
-
-jump_stmt:
-    RETURN expr SEMI {Todo}
-  | RETURN SEMI {Todo}
-  | CONTINUE SEMI {Todo}
-  | BREAK SEMI {Todo}
-
-expr_opt:
-    /* nothing */ {Todo} 
-  | expr {Todo}
+    IF LPAREN expr RPAREN stmt %prec NOELSE {If($3, $5, Expr(Noexpr))}
+  | IF LPAREN expr RPAREN stmt ELSE stmt    {If($3, $5, $7)}
 
 iteration_stmt:
-    WHILE LPAREN expr RPAREN stmt {Todo}
-  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt {Todo}
+    WHILE LPAREN expr RPAREN stmt {While($3, $5)}
+  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt {For($3, $5, $7, $9)}
 
-arg_declaration_list:
-    /* nothing */
-  | arg_declaration {Todo}
-  | arg_declaration_list COMMA arg_declaration {Todo}
+jump_stmt:
+    RETURN expr SEMI {Return($2)}
+  | RETURN SEMI {Return(Noexpr)}
+  | CONTINUE SEMI {Continue}
+  | BREAK SEMI {Break}
 
-arg_declaration:
-    primitive_declarator {Todo}
-  | list_declarator {Todo}
-  | IDENTIFIER IDENTIFIER {Todo}
-  | IN channel_type IDENTIFIER {Todo}
-  | OUT channel_type IDENTIFIER {Todo}
+expr_opt:
+    /* nothing */ {Noexpr}
+  | expr {$1}
 
 expr_list:
-    expr {Todo}
-  | expr COMMA expr_list {Todo}
+    expr {[$1]}
+  | expr COMMA expr_list {$1::$3}
 
 expr:
-    INT_LITERAL {Todo}  
-  | DOUBLE_LITERAL {Todo}
-  | STRING_LITERAL {Todo}
-  | CHAR_LITERAL {Todo}
-  | BOOL_LITERAL {Todo}
-  | IDENTIFIER {Todo}
-  | READ_CHANNEL IDENTIFIER {Todo}
-  | expr WRITE_CHANNEL IDENTIFIER {Todo}
-  | function_call {Todo}
-  | expr PLUS expr {Todo}
-  | expr MINUS expr {Todo}
-  | expr TIMES expr {Todo}
-  | expr DIVIDE expr {Todo}
-  | expr MODULO expr {Todo}
-  | expr EQ expr {Todo}
-  | expr NEQ expr {Todo}
-  | expr LT expr {Todo}
-  | expr GT expr {Todo}
-  | expr LEQ expr {Todo}
-  | expr GEQ expr {Todo}
-  | expr SHIFT_LEFT expr {Todo}
-  | expr SHIFT_RIGHT expr {Todo}
-  | expr BIT_XOR expr {Todo}
-  | expr BIT_AND expr {Todo}
-  | expr BIT_OR expr {Todo}
-  | expr AND expr {Todo}
-  | expr OR expr {Todo}
-  | IDENTIFIER ASSIGN expr {Todo}
-  | IDENTIFIER LBRACKET INT_LITERAL RBRACKET ASSIGN expr {Todo}
-  | IDENTIFIER LBRACKET INT_LITERAL RBRACKET {Todo}
-  | LPAREN expr RPAREN {Todo}
-  | BIT_NOT expr {Todo}
-  | NEGATE expr {Todo}
+    INT_LITERAL {IntLiteral($1)}
+  | DOUBLE_LITERAL {DoubleLiteral($1)}
+  | STRING_LITERAL {StringLiteral($1)}
+  | CHAR_LITERAL {CharLiteral($1)}
+  | BOOL_LITERAL {BoolLiteral($1)}
+  | IDENTIFIER {Id($1)}
+  | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
+  | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
+  | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
+  | function_call {$1}
+  | expr PLUS expr {BinOp($1, Plus, $3)}
+  | expr MINUS expr {BinOp($1, Minus, $3)}
+  | expr TIMES expr {BinOp($1, Times, $3)}
+  | expr DIVIDE expr {BinOp($1, Divide, $3)}
+  | expr MODULO expr {BinOp($1, Modulo, $3)}
+  | expr EQ expr {BinOp($1, Eq, $3)}
+  | expr NEQ expr {BinOp($1, Neq, $3)}
+  | expr LT expr {BinOp($1, Lt, $3)}
+  | expr GT expr {BinOp($1, Gt,$3)}
+  | expr LEQ expr {BinOp($1, Leq,$3)}
+  | expr GEQ expr {BinOp($1, Geq,$3)}
+  | expr AND expr {BinOp($1, And,$3)}
+  | expr OR expr {BinOp($1, Or,$3)}
+  | IDENTIFIER ASSIGN expr {BinOp(Id($1), Assign, $3)}
+  | LPAREN expr RPAREN {$2}
+  | NOT expr {UnaryOp(Not, $2)}
+  | MINUS expr %prec UMINUS { UnaryOp(Negate, $2) }
 
 function_call:
-    IDENTIFIER LPAREN RPAREN {Todo}
-  | IDENTIFIER LPAREN expr_list RPAREN {Todo}
+    IDENTIFIER LPAREN RPAREN {FunctionCall([])}
+  | IDENTIFIER LPAREN expr_list RPAREN {FunctionCall($3)}

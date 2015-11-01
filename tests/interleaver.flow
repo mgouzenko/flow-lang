@@ -1,0 +1,14 @@
+proc interleaver(int inchan1, int inchan2, int ochan){
+	int current_token;
+		bool i = false;
+
+		string yo = "yoooo!\né";
+
+		for(;;){
+		if(i) @inchan1 -> ochan;
+		else  @inchan2 -> ochan;
+		i = !i;
+		i = h;
+
+		}
+}

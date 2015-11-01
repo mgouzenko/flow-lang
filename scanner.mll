@@ -31,7 +31,7 @@ rule token = parse
 | "<<"          { SHIFT_LEFT }
 | ">>"          { SHIFT_RIGHT }
 | '~'           { BIT_NOT}
-| '!'           { NEGATE }
+| '!'           { NOT }
 | '|'           { BIT_OR }
 | '&'           { BIT_AND }
 | '^'           { BIT_XOR }
