@@ -30,7 +30,7 @@
 %left TIMES DIVIDE MODULO
 %left WRITE_CHANNEL READ_CHANNEL
 %left DOT
-%nonassoc UMINUS  /* dummy variable for highest precedence */
+%nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
 %start program
 %type <Ast.program> program
@@ -116,8 +116,7 @@ dot_initializer:
                                   dot_initializer_val = $4 }}
 
 stmt_list:
-    /* Nothing */ {[]}
-  | stmt {[$1]}
+    stmt {[$1]}
   | stmt stmt_list {$1::$2}
 
 stmt:
@@ -182,8 +181,8 @@ expr:
   | expr OR expr {BinOp($1, Or,$3)}
   | IDENTIFIER ASSIGN expr {BinOp(Id($1), Assign, $3)}
   | LPAREN expr RPAREN {$2}
-  | NOT expr {UnaryOp(Not, $2)}
-  | MINUS expr %prec UMINUS { UnaryOp(Negate, $2) }
+  | NOT expr %prec UNARY_OP {UnaryOp(Not, $2)}
+  | MINUS expr %prec UNARY_OP { UnaryOp(Negate, $2) }
 
 function_call:
     IDENTIFIER LPAREN RPAREN {FunctionCall([])}
