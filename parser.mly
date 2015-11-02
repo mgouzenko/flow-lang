@@ -186,5 +186,5 @@ expr:
   | MINUS expr %prec UNARY_OP { UnaryOp(Negate, $2) }
 
 function_call:
-    IDENTIFIER LPAREN RPAREN {FunctionCall([])}
-  | IDENTIFIER LPAREN expr_list RPAREN {FunctionCall($3)}
+    IDENTIFIER LPAREN RPAREN {FunctionCall($1, [])}
+  | IDENTIFIER LPAREN expr_list RPAREN {FunctionCall($1, $3)}
