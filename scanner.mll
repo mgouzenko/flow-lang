@@ -28,13 +28,7 @@ rule token = parse
 | "<="          { LEQ }
 | ">"           { GT }
 | ">="          { GEQ }
-| "<<"          { SHIFT_LEFT }
-| ">>"          { SHIFT_RIGHT }
-| '~'           { BIT_NOT}
 | '!'           { NOT }
-| '|'           { BIT_OR }
-| '&'           { BIT_AND }
-| '^'           { BIT_XOR }
 | "||"          { OR }
 | "&&"          { AND }
 | '%'           { MODULO }
