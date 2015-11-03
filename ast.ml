@@ -57,7 +57,7 @@ type stmt =
 
 type function_declaration = {
     return_type: flow_type;
-    process_name: string;
+    function_name: string;
     arguments: variable_declaration list;
     body : stmt list;
 }

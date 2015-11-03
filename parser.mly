@@ -51,9 +51,9 @@ function_declaration:
     {
         {
             return_type = $1;
-            process_name = $2;
+            function_name = $2;
             arguments = $4;
-            body = List.rev $7;
+            body = $7;
         }
     }
 

@@ -1,4 +1,4 @@
-proc interleaver(int inchan1, int inchan2, int ochan){
+proc interleaver(in int inchan1, in int inchan2, out int ochan){
 	int current_token;
 		bool i = false;
 
