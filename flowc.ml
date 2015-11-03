@@ -176,20 +176,27 @@ let print_string_of_program = function
                            let program = print_dot_node "Program" in
                            List.iter (function num -> print_dot_edge program num) nodes
 
-type action = Ast | Interpret | Bytecode | Compile
+type action = Ast | Interpret | Bytecode | Compile | Grammar
 
 let _ =
   let action = if Array.length Sys.argv > 1 then
     List.assoc Sys.argv.(1) [ ("-a", Ast);
 			      ("-i", Interpret);
 			      ("-b", Bytecode);
-			      ("-c", Compile) ]
-  else Compile in
+			      ("-c", Compile);
+            ("-g", Grammar)]
+  else Ast in
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.program Scanner.token lexbuf in
-  let _ = print_string_of_program program in
-  let graph = "digraph G{" ^ !dot_graph ^ "}" in
-  let outfile = open_out "out.dot" in
-  let _ = Printf.fprintf outfile "%s" graph in
-  let _ = close_out outfile in
-  Sys.command ("dot -Tpng out.dot -o out.png")
+  match action with 
+    Grammar -> print_endline "Grammar Successfully Parsed" 
+  | Ast -> ignore(let _ = print_string_of_program program in
+      let graph = "digraph G{" ^ !dot_graph ^ "}" in
+      let outfile = open_out "out.dot" in
+      let _ = Printf.fprintf outfile "%s" graph in
+      let _ = close_out outfile in
+      Sys.command ("dot -Tpng out.dot -o out.png"))
+  | Interpret -> ()
+  | Bytecode -> ()
+  | Compile -> ()
+
