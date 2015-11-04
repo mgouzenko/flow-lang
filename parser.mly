@@ -51,8 +51,19 @@ function_declaration:
             return_type = $1;
             function_name = $2;
             arguments = $4;
+            has_definition = true;
             body = $7;
         }
+    }
+  | flow_type IDENTIFIER LPAREN arg_decl_list RPAREN SEMI
+    {
+      {
+            return_type = $1;
+            function_name = $2;
+            arguments = $4;
+            has_definition = false;
+            body = [];
+      }
     }
 
 arg_decl_list:

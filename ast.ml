@@ -59,6 +59,7 @@ type function_declaration = {
     return_type: flow_type;
     function_name: string;
     arguments: variable_declaration list;
+    has_definition: bool;
     body : stmt list;
 }
 
