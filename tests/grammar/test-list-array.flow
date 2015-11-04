@@ -1,0 +1,4 @@
+void main() {
+	list<string> myStringList;
+	array[35]<string> myArrayof35Strings;
+}

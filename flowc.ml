@@ -80,9 +80,11 @@ let rec string_of_type = function
     | Void -> "void"
     | Proc -> "proc"
     | String -> "string"
-    | Channel(t, Nodir) -> "channel<" ^ (string_of_type t) ^ ">"
+    | Channel(t, Nodir) -> "channel<" ^ string_of_type t ^ ">"
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
+    | List(t) -> "list<" ^ string_of_type t ^ ">"
+    | Array(n, t) -> "array[" ^ string_of_int n ^ "]<" ^ string_of_type t ^ ">"
     | Struct(s) -> s;;
 
 let print_string_of_type t =

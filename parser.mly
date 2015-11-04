@@ -6,7 +6,7 @@
 %token DOT
 %token BREAK CONTINUE VOID
 %token OR AND NOT
-%token DOUBLE CHAR BOOL INT STRING LIST STRUCT
+%token DOUBLE CHAR BOOL INT STRING LIST ARRAY STRUCT
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
 %token <int> INT_LITERAL
@@ -86,7 +86,9 @@ flow_type:
   | PROC                      {Proc}
   | STRING                    {String}
   | IDENTIFIER                {Struct($1)}
-  | CHANNEL LT flow_type GT {Channel($3, Nodir)}
+  | ARRAY LBRACKET INT_LITERAL RBRACKET LT flow_type GT {Array($3, $6)}
+  | LIST LT flow_type GT      {List($3)}
+  | CHANNEL LT flow_type GT   {Channel($3, Nodir)}
   | IN flow_type              {Channel($2, In)}
   | OUT flow_type             {Channel($2, Out)}
 

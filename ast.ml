@@ -18,6 +18,8 @@ type flow_type =
     | String
     | Channel of flow_type * direction
     | Struct of string    (* Needs a string representing struct type *)
+    | Array of int * flow_type
+    | List of flow_type
 
 type dot_initializer = {
     dot_initializer_id: string;
