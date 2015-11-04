@@ -59,7 +59,7 @@ rule token = parse
 | double as lxm { DOUBLE_LITERAL(float_of_string lxm)}
 | '\"' ([^'\"']* as lxm) '\"' { STRING_LITERAL(lxm) }
 | '\'' ([' '-'&' '('-'[' ']'-'~'] as lxm) '\'' { CHAR_LITERAL(lxm) }
-| ['_' 'a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { IDENTIFIER(lxm) }
+| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { IDENTIFIER(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
