@@ -75,7 +75,7 @@ flow_type:
   | PROC                      {Proc}
   | STRING                    {String}
   | IDENTIFIER                {Struct($1)}
-  | CHANNEL '<' flow_type '>' {Channel($3, Nodir)}
+  | CHANNEL LT flow_type GT {Channel($3, Nodir)}
   | IN flow_type              {Channel($2, In)}
   | OUT flow_type             {Channel($2, Out)}
 
