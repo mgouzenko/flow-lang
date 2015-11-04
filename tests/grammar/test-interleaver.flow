@@ -1,0 +1,21 @@
+proc interleaver(in int inchan1, in int inchan2, out int ochan){
+  int current_token;
+    bool i = false;
+
+    string yo = "yoooo!\né";
+
+    for(;;){
+    if(i) @inchan1 -> ochan;
+    else  @inchan2 -> ochan;
+    i = !i;
+    i = h;
+
+    }
+}
+
+struct node{
+  int val;
+  node next;
+}
+
+node foo;
