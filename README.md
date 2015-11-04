@@ -1,2 +1,2 @@
 # PLT
-[![Build Status](https://travis-ci.org/mgouzenko/flow-lang.svg?branch=flow-parser)](https://travis-ci.org/mgouzenko/flow-lang)
+[![Build Status](https://travis-ci.org/mgouzenko/flow-lang.svg?branch=master)](https://travis-ci.org/mgouzenko/flow-lang)
