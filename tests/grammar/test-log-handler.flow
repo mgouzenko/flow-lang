@@ -1,0 +1,50 @@
+# if lines look like this:
+# 2S 23:01:45 2015-11-03 server started
+# 2S 23:01:48 2015-11-03 client A is connected 
+# 2W 23:01:59 2015-11-03 client A sending excessive messages
+# 2U 23:03:32 2015-11-03 client A has DDOSed the server
+# 2U 23:03:35 2015-11-03 server shutting down
+
+void main() {
+	line_reader(file1_chan, "log1.txt");
+	line_reader(file2_chan, "log2.txt");
+	line_reader(file3_chan, "log3.txt");
+	three_way_interleaver(file1_chan, file2_chan, file3_chan, loglines_chan);
+	handler(loglines_chan, warning_chan, urgent_chan);
+	printer(warning_chan);
+	email_sender(urgent_chan);
+}
+
+proc handler(in string log_lines, out string warning_messages, out string urgent_messages) {
+	
+
+	for (;;) {
+		string line = @log_lines;
+		char level_id = charAt(line, 1);
+		
+		if(level_id == 'S') {
+			continue;
+		}
+		if(level_id == 'W') {
+			substr(line, 3) -> warning_messages;
+		}
+		if(level_id == 'U') {
+			substr(line, 3) -> urgent_messages;
+		}
+	}	
+}
+
+proc printer(in string message_body) {
+	print("Warning: " + message_body);
+}
+
+proc email_sender(in string message_body) {
+	send_email("Urgent: " + message_body);
+}
+
+channel<string> file1_chan;
+channel<string> file2_chan;
+channel<string> file3_chan;
+channel<string> loglines;
+channel<string> warning_chan;
+channel<string> urgent_chan;
