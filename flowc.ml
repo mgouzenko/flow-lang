@@ -18,4 +18,4 @@ let _ =
       let _ = Printf.fprintf outfile "%s" graph in
       let _ = close_out outfile in
       Sys.command ("dot -Tpng out.dot -o out.png"))
-  | Compile ->  Compile.compile program
+  | Compile ->  print_string (Compile.compile program)

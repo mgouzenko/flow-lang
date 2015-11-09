@@ -36,7 +36,7 @@
 %%
 
 program:
-  declarations EOF {Declarations($1)}
+  declarations EOF {Declarations(List.rev $1)}
 
 declarations:
     /* nothing */ { [] }
