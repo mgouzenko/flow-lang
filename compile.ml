@@ -11,7 +11,7 @@ let compile (program : program) =
       | Bool -> "int"
       | Char -> "char"
       | Void -> "void"
-      | Proc -> "void"
+      | Proc -> "void*"
       | String -> "char *"
       | Channel(t, dir) ->
               (try
@@ -22,14 +22,37 @@ let compile (program : program) =
       | Array(size, t) -> translate_type t
       | List(t) -> "wtf?" in
 
+    let translate_expr (expr: expr) = "Expr" in
+
     (* Translate flow variable declaration to c variable declaration *)
-    let translate_vdecl (vdecl : variable_declaration) = "VarDecl"
+    let translate_vdecl (vdecl : variable_declaration) =
+        let translated_type = translate_type vdecl.declaration_type in
+        translated_type ^ " " ^
+        vdecl.declaration_id ^
+        (match vdecl.declaration_type with
+            Channel(t, Nodir) -> ("(" ^ translated_type ^
+                                  ") = malloc(sizeof(" ^ translated_type)
+          | _ -> (match vdecl.declaration_initializer with
+                      Noexpr -> ""
+                    | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
+
+    (* unpacks the arguments to a process from void *_args *)
+    let unpack_process_args (process: function_declaration) =
+        String.concat "\n"
+        (List.map (fun vdecl ->
+            (translate_vdecl vdecl) ^ " = " ^
+            "((struct _" ^ process.function_name ^ "_args*) _args)->" ^
+            vdecl.declaration_id)
+        process.arguments) in
 
     (* Translate flow function declaration to c function declaration *)
-    and translate_fdecl (fdecl : function_declaration) =
+    let translate_fdecl (fdecl : function_declaration) =
         (translate_type fdecl.return_type) ^ " " ^
         fdecl.function_name ^
-        "\n{\nbody\n}"
+        (match fdecl.return_type with
+            Proc -> "(void *_args)\n{\n" ^ (unpack_process_args fdecl)
+          | _  -> "(" ^ String.concat ", " (List.map translate_vdecl fdecl.arguments) ^ ")\n{") ^
+        "\nbody\n}"
 
     (* Tranlsate flow struct declaration to c struct declaration *)
     and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in
