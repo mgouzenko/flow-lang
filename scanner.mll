@@ -33,6 +33,7 @@ rule token = parse
 | "&&"          { AND }
 | '%'           { MODULO }
 | '@'           { READ_CHANNEL }
+| '^'           { WAIT_FOR_MORE }
 | "->"          { WRITE_CHANNEL }
 | "if"          { IF }
 | "else"        { ELSE }
