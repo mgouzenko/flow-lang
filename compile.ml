@@ -17,8 +17,8 @@ let compile (program : program) =
               (try
                   let _ = List.find (fun e -> t = e) supported_channels in
                   "struct " ^ translate_type t ^ "_channel* "
-              with Not_found -> raise (Failure("channel not supported")))
-      | Struct(id) -> id
+              with Not_found -> raise (Failure("Channel not supported")))
+      | Struct(id) -> "struct " ^ id
       | Array(size, t) -> translate_type t
       | List(t) -> "wtf?" in
 
@@ -36,23 +36,59 @@ let compile (program : program) =
                       Noexpr -> ""
                     | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
 
+    let rec translate_stmt indentation_level (stmt: stmt) =
+        let rec make_tabs num =
+            if num = 0 then "" else ("\t" ^ make_tabs(num - 1)) in
+        let cur_tabs = make_tabs indentation_level in
+
+        cur_tabs ^
+        (match stmt with
+            Expr(e) -> translate_expr e ^ ";\n"
+          | Block(stmt_list) ->
+                  "{\n" ^
+                  String.concat "" (List.map (translate_stmt (indentation_level+1)) stmt_list) ^
+                  cur_tabs ^ "}\n"
+          | Return(e) -> "return " ^ translate_expr e ^ ";"
+          | Declaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
+          | If(e1, s1, s2) ->
+                  "if(" ^ translate_expr e1 ^ ")\n" ^
+                  translate_stmt (indentation_level + 1) s1 ^ "\n" ^
+                  cur_tabs ^ "else" ^ "\n" ^
+                  translate_stmt (indentation_level + 1) s2
+          | For(e1, e2, e3, s) ->
+                  "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
+                  ")\n" ^ translate_stmt (indentation_level) s
+          | While(e, s) ->
+                  "while(" ^ translate_expr e ^ ")" ^
+                  translate_stmt (indentation_level + 1) s
+          | Continue -> "continue"
+          | Break -> "break"
+        ) in
+
     (* unpacks the arguments to a process from void *_args *)
     let unpack_process_args (process: function_declaration) =
-        String.concat "\n"
+        "\n\t" ^
+        (String.concat ";\n\t"
         (List.map (fun vdecl ->
             (translate_vdecl vdecl) ^ " = " ^
             "((struct _" ^ process.function_name ^ "_args*) _args)->" ^
             vdecl.declaration_id)
-        process.arguments) in
+        process.arguments)) ^
+        ";\n" in
 
     (* Translate flow function declaration to c function declaration *)
     let translate_fdecl (fdecl : function_declaration) =
+        let arg_decl_string_list = (List.map translate_vdecl fdecl.arguments) in
+        (match fdecl.return_type with
+            Proc -> ("struct _" ^ fdecl.function_name ^ "_args{\n\t" ^
+                     String.concat ";\n\t" arg_decl_string_list ^ ";\n};\n")
+          | _ -> "") ^
         (translate_type fdecl.return_type) ^ " " ^
         fdecl.function_name ^
         (match fdecl.return_type with
-            Proc -> "(void *_args)\n{\n" ^ (unpack_process_args fdecl)
-          | _  -> "(" ^ String.concat ", " (List.map translate_vdecl fdecl.arguments) ^ ")\n{") ^
-        "\nbody\n}"
+            Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
+          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^
+        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ "}"
 
     (* Tranlsate flow struct declaration to c struct declaration *)
     and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in
@@ -65,4 +101,4 @@ let compile (program : program) =
               VarDecl(vdecl) -> translate_vdecl vdecl
             | FuncDecl(fdecl) -> translate_fdecl fdecl
             | StructDecl(sdecl) -> translate_struct_decl sdecl)
-        declaration_list)
+        declaration_list) ^ "\n"
