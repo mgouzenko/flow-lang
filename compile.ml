@@ -49,6 +49,12 @@ let compile (program : program) =
           | Retrieve -> "dequeue_int(" ^ exp ^ ")"
           | Wait -> "wait_for_more(" ^ exp ^ ")"
         in
+        let rec expr_list_to_string expr_list = 
+          match expr_list with  
+            [] -> ""
+          | first::second::tail -> translate_expr first ^ "," ^ translate_expr second ^ "," ^ expr_list_to_string tail 
+          | first::tail -> translate_expr first ^ expr_list_to_string tail 
+        in
         match expr with
           IntLiteral(i) -> string_of_int i
         | StringLiteral(s) -> ""
@@ -61,7 +67,7 @@ let compile (program : program) =
         | UnaryOp(unary_op, expr) -> 
             translate_unary_op unary_op (translate_expr expr) 
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
-        | FunctionCall(id, expr_list) -> "TODO"
+        | FunctionCall(id, expr_list) -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         | StructInitializer(dot_initializer_list) -> "TODO"
         | Noexpr -> ""
 
