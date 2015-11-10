@@ -45,7 +45,13 @@ let compile (program : program) =
           match unary_op with
             Not -> "!"
           | Negate -> "-"
-          | Retrieve -> "@"
+          | Retrieve -> "dequeue_int"
+        in
+        let add_necessary_unary_parens unary_op expr =
+          match unary_op with
+            Not -> expr
+          | Negate -> expr
+          | Retrieve -> "(" ^ expr ^ ")" 
         in
         match expr with
           IntLiteral(i) -> string_of_int i
@@ -57,7 +63,7 @@ let compile (program : program) =
         | BinOp(expr1, bin_op, expr2) -> 
             translate_expr expr1 ^ translate_bin_op bin_op ^ translate_expr expr2
         | UnaryOp(unary_op, expr) -> 
-            translate_unary_op unary_op ^ translate_expr expr
+            translate_unary_op unary_op ^ add_necessary_unary_parens unary_op (translate_expr expr) 
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
         | FunctionCall(id, expr_list) -> "TODO"
         | StructInitializer(dot_initializer_list) -> "TODO"
