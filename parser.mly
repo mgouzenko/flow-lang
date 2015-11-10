@@ -2,7 +2,7 @@
 
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE MODULO ASSIGN
-%token WRITE_CHANNEL READ_CHANNEL PROC CHANNEL IN OUT
+%token WRITE_CHANNEL READ_CHANNEL WAIT_FOR_MORE PROC CHANNEL IN OUT
 %token DOT
 %token BREAK CONTINUE VOID
 %token OR AND NOT
@@ -26,7 +26,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
-%left WRITE_CHANNEL READ_CHANNEL
+%left WRITE_CHANNEL READ_CHANNEL WAIT_FOR_MORE
 %left DOT
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
@@ -176,6 +176,7 @@ expr:
   | IDENTIFIER {Id($1)}
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
   | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
+  | WAIT_FOR_MORE IDENTIFIER {UnaryOp(Wait, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
   | expr PLUS expr {BinOp($1, Plus, $3)}

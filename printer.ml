@@ -35,6 +35,7 @@ let print_string_of_binop op =
 let print_string_of_unop op =
     let opstring = match op with
           Retrieve -> "@"
+        | Wait -> "^"
         | Negate   -> "-"
         | Not      -> "!" in
     print_dot_node opstring
