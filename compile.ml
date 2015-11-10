@@ -41,20 +41,13 @@ let compile (program : program) =
           | Send -> "enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
-        let translate_unary_op unary_op =
+        let translate_unary_op unary_op exp =
           match unary_op with
-            Not -> "!"
-          | Negate -> "-"
+            Not -> "!" ^ exp
+          | Negate -> "-" ^ exp
            (* TODO: In semantic analysis we need to check type to dequeue *)
-          | Retrieve -> "dequeue_int"
-          | Wait -> "wait_for_more"
-        in
-        let add_necessary_unary_parens unary_op expr =
-          match unary_op with
-            Not -> expr
-          | Negate -> expr
-          | Retrieve -> "(" ^ expr ^ ")" 
-          | Wait -> "(" ^ expr ^ ")"
+          | Retrieve -> "dequeue_int(" ^ exp ^ ")"
+          | Wait -> "wait_for_more(" ^ exp ^ ")"
         in
         match expr with
           IntLiteral(i) -> string_of_int i
@@ -66,7 +59,7 @@ let compile (program : program) =
         | BinOp(expr1, bin_op, expr2) -> 
              translate_bin_op (translate_expr expr1) bin_op (translate_expr expr2)
         | UnaryOp(unary_op, expr) -> 
-            translate_unary_op unary_op ^ add_necessary_unary_parens unary_op (translate_expr expr) 
+            translate_unary_op unary_op (translate_expr expr) 
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
         | FunctionCall(id, expr_list) -> "TODO"
         | StructInitializer(dot_initializer_list) -> "TODO"
