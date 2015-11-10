@@ -22,7 +22,48 @@ let compile (program : program) =
       | Array(size, t) -> translate_type t
       | List(t) -> "wtf?" in
 
-    let translate_expr (expr: expr) = "Expr" in
+    let rec translate_expr (expr: expr) =
+        let translate_bin_op bin_op = 
+          match bin_op with
+            Plus -> "+"
+          | Minus -> "-"
+          | Times -> "*"
+          | Divide -> "/"
+          | Modulo -> "%"
+          | Eq -> "=="
+          | Neq -> "!="
+          | Lt -> "<"
+          | Gt -> ">"
+          | Leq -> "<="
+          | Geq -> ">="
+          | And -> "&&"
+          | Or -> "||"
+          | Send -> "->"
+          | Assign -> "="
+        in
+        let translate_unary_op unary_op =
+          match unary_op with
+            Not -> "!"
+          | Negate -> "-"
+          | Retrieve -> "@"
+        in
+        match expr with
+          IntLiteral(i) -> string_of_int i
+        | StringLiteral(s) -> ""
+        | BoolLiteral(b) -> string_of_bool b
+        | CharLiteral(c) -> "\' ^ c ^ \'"
+        | DoubleLiteral(d) -> string_of_float d
+        | Id(i) -> i
+        | BinOp(expr1, bin_op, expr2) -> 
+            translate_expr expr1 ^ translate_bin_op bin_op ^ translate_expr expr2
+        | UnaryOp(unary_op, expr) -> 
+            translate_unary_op unary_op ^ translate_expr expr
+        | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
+        | FunctionCall(id, expr_list) -> "TODO"
+        | StructInitializer(dot_initializer_list) -> "TODO"
+        | Noexpr -> ""
+
+     in
 
     (* Translate flow variable declaration to c variable declaration *)
     let translate_vdecl (vdecl : variable_declaration) =
