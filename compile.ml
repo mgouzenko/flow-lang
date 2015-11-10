@@ -23,35 +23,38 @@ let compile (program : program) =
       | List(t) -> "wtf?" in
 
     let rec translate_expr (expr: expr) =
-        let translate_bin_op bin_op = 
+        let translate_bin_op exp1 bin_op exp2 = 
           match bin_op with
-            Plus -> "+"
-          | Minus -> "-"
-          | Times -> "*"
-          | Divide -> "/"
-          | Modulo -> "%"
-          | Eq -> "=="
-          | Neq -> "!="
-          | Lt -> "<"
-          | Gt -> ">"
-          | Leq -> "<="
-          | Geq -> ">="
-          | And -> "&&"
-          | Or -> "||"
-          | Send -> "->"
-          | Assign -> "="
+            Plus -> exp1 ^ "+" ^ exp2
+          | Minus -> exp1 ^ "-" ^ exp2
+          | Times -> exp1 ^ "*" ^ exp2
+          | Divide -> exp1 ^ "/" ^ exp2
+          | Modulo -> exp1 ^ "%" ^ exp2
+          | Eq -> exp1 ^ "==" ^ exp2
+          | Neq -> exp1 ^ "!=" ^ exp2
+          | Lt -> exp1 ^ "<" ^ exp2
+          | Gt -> exp1 ^ ">" ^ exp2
+          | Leq -> exp1 ^ "<=" ^ exp2
+          | Geq -> exp1 ^ ">=" ^ exp2
+          | And -> exp1 ^ "&&" ^ exp2
+          | Or -> exp1 ^ "||" ^ exp2
+          | Send -> "enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+          | Assign -> exp1 ^ "=" ^ exp2
         in
         let translate_unary_op unary_op =
           match unary_op with
             Not -> "!"
           | Negate -> "-"
+           (* TODO: In semantic analysis we need to check type to dequeue *)
           | Retrieve -> "dequeue_int"
+          | Wait -> "wait_for_more"
         in
         let add_necessary_unary_parens unary_op expr =
           match unary_op with
             Not -> expr
           | Negate -> expr
           | Retrieve -> "(" ^ expr ^ ")" 
+          | Wait -> "(" ^ expr ^ ")"
         in
         match expr with
           IntLiteral(i) -> string_of_int i
@@ -61,7 +64,7 @@ let compile (program : program) =
         | DoubleLiteral(d) -> string_of_float d
         | Id(i) -> i
         | BinOp(expr1, bin_op, expr2) -> 
-            translate_expr expr1 ^ translate_bin_op bin_op ^ translate_expr expr2
+             translate_bin_op (translate_expr expr1) bin_op (translate_expr expr2)
         | UnaryOp(unary_op, expr) -> 
             translate_unary_op unary_op ^ add_necessary_unary_parens unary_op (translate_expr expr) 
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
