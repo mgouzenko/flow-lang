@@ -1,0 +1,34 @@
+proc interleaver(in <int> chan1, in <int> chan2, out <int> ochan) {
+  while(chan1 || chan2)
+  {
+      if(chan1) {@chan1 -> ochan;}
+      if(chan2) {@chan2 -> ochan;}
+  }
+    poison ochan;
+}
+
+proc tokenGen(out <int> ochan, array [5] <int> tokens) {
+  for (int i = 0; i < 5; i = i+1) {
+    tokens[i] -> ochan
+  }
+  poison ochan;
+}
+
+proc printer(in <int> chan) {
+  while(chan) {
+    printf(“%d”, @chan);
+  }
+}
+
+int main() {
+  channel<int> chan1;
+  channel<int> chan2;
+  channel<int> chan3;
+ # array [5] <int> arr1 = {1,3,6,9,11};
+ # array [5] <int> arr2 = {2,4,6,8,10};
+  tokenGen(chan1, arr1);
+  tokenGen(chan2, arr2);
+  interleaver(chan1, chan2, chan3);
+  printer(chan3);
+  return 0;
+}
