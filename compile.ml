@@ -49,17 +49,21 @@ let compile (program : program) =
           | Retrieve -> "dequeue_int(" ^ exp ^ ")"
           | Wait -> "wait_for_more(" ^ exp ^ ")"
         in
-        let rec expr_list_to_string expr_list = 
+        (*let rec expr_list_to_string expr_list = 
           match expr_list with  
             [] -> ""
           | first::second::tail -> translate_expr first ^ "," ^ translate_expr second ^ "," ^ expr_list_to_string tail 
           | first::tail -> translate_expr first ^ expr_list_to_string tail 
+        in *)
+        let rec expr_list_to_string expr_list =
+          List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
+             (translate_expr (List.hd expr_list)) (List.tl expr_list) 
         in
         match expr with
           IntLiteral(i) -> string_of_int i
-        | StringLiteral(s) -> ""
+        | StringLiteral(s) -> "\"" ^ s ^ "\""
         | BoolLiteral(b) -> string_of_bool b
-        | CharLiteral(c) -> "\' ^ c ^ \'"
+        | CharLiteral(c) -> "\'" ^ String.make 1 c ^ "\'"
         | DoubleLiteral(d) -> string_of_float d
         | Id(i) -> i
         | BinOp(expr1, bin_op, expr2) -> 
