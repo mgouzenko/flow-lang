@@ -20,7 +20,7 @@ proc printer(in int chan) {
   }
 }
 
-void main() {
+int main() {
   channel<int> chan1;
   channel<int> chan2;
   channel<int> chan3;
@@ -30,5 +30,5 @@ void main() {
   tokenGen(chan2, arr2);
   interleaver(chan1, chan2, chan3);
   printer(chan3);
-  
+  return 0;
 }
