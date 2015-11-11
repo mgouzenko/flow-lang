@@ -1,0 +1,9 @@
+int main()
+{
+  if (false) { 
+    printf("%d\n", 30);
+  } else printf("%d\n", 5);
+  
+  printf("%d", 10);
+  return 0;
+}

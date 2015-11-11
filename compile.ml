@@ -52,6 +52,11 @@ let compile (program : program) =
           | Retrieve -> "dequeue_int(" ^ exp ^ ")"
           | Wait -> "wait_for_more(" ^ exp ^ ")"
         in
+        let translate_bool b = 
+          match b with
+            true -> "1"
+          | false -> "0"
+        in
         (*let rec expr_list_to_string expr_list = 
           match expr_list with  
             [] -> ""
@@ -65,7 +70,7 @@ let compile (program : program) =
         match expr with
           IntLiteral(i) -> string_of_int i
         | StringLiteral(s) -> "\"" ^ s ^ "\""
-        | BoolLiteral(b) -> string_of_bool b
+        | BoolLiteral(b) -> translate_bool b
         | CharLiteral(c) -> "\'" ^ String.make 1 c ^ "\'"
         | DoubleLiteral(d) -> string_of_float d
         | Id(i) -> i

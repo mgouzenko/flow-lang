@@ -1,0 +1,9 @@
+int main()
+{
+  if (true) { 
+    printf("%d\n", 10);
+  }
+  
+  printf("%d", 5);
+  return 0;
+}
