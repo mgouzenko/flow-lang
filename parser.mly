@@ -5,6 +5,7 @@
 %token WRITE_CHANNEL READ_CHANNEL WAIT_FOR_MORE PROC CHANNEL IN OUT
 %token DOT
 %token BREAK CONTINUE VOID
+%token POISON
 %token OR AND NOT
 %token DOUBLE CHAR BOOL INT STRING LIST ARRAY STRUCT
 %token EQ NEQ LT LEQ GT GEQ
@@ -137,6 +138,7 @@ stmt:
   | iteration_stmt   {$1}
   | var_declaration SEMI {Declaration($1)}
   | jump_stmt        {$1}
+  | poison_stmt      {$1}
 
 expr_stmt:
     expr SEMI {Expr($1)}
@@ -159,6 +161,9 @@ jump_stmt:
   | CONTINUE SEMI {Continue}
   | BREAK SEMI {Break}
 
+poison_stmt:
+    POISON IDENTIFIER SEMI {Poison(Id($2))}
+
 expr_opt:
     /* nothing */ {Noexpr}
   | expr {$1}
@@ -175,6 +180,8 @@ expr:
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
+  | LBRACE expr_list RBRACE {ArrayInitializer($2)}
+  | IDENTIFIER LBRACKET expr RBRACKET {ArrayElement($1, $3)}
   | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | WAIT_FOR_MORE IDENTIFIER {UnaryOp(Wait, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}

@@ -33,6 +33,8 @@ and expr =
   | CharLiteral of char
   | DoubleLiteral of float
   | StructInitializer of dot_initializer list
+  | ArrayInitializer of expr list
+  | ArrayElement of string * expr
   | Id of string
   | BinOp of expr * bin_op * expr
   | UnaryOp of unary_op * expr
@@ -56,6 +58,7 @@ type stmt =
   | While of expr * stmt
   | Continue
   | Break
+  | Poison of expr
 
 type function_declaration = {
     return_type: flow_type;

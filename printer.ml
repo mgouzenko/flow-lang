@@ -47,6 +47,17 @@ let rec print_string_of_expr = function
   | CharLiteral(c) -> print_dot_node (Char.escaped c)
   | DoubleLiteral(d) -> print_dot_node "Some double"
   | StructInitializer(decl_list) -> print_dot_node "StructInitializer"
+  | ArrayInitializer(expr_list) -> 
+          let arrinitnode = print_dot_node "ArrayInitializer"
+          in let enodes = List.map print_string_of_expr expr_list
+          in let _ = List.iter (function enode -> print_dot_edge arrinitnode enode) 
+                                enodes 
+          in arrinitnode
+  | ArrayElement(name, idx) -> 
+          let arrelemnode = print_dot_node name
+          in let idxnode = print_string_of_expr idx
+          in let _ = print_dot_edge arrelemnode idxnode ~desc: "index"
+          in arrelemnode 
   | Id(s) -> print_dot_node s
   | BinOp(e1, op, e2) ->
           let num1 = print_string_of_expr e1
@@ -151,6 +162,11 @@ let rec print_string_of_stmt = function
             in while_node
     | Continue -> print_dot_node "continue"
     | Break -> print_dot_node "break"
+    | Poison(chan_id) -> 
+            let pnode = print_dot_node "poison"
+            and inode = print_string_of_expr chan_id in 
+            let _ = print_dot_edge pnode inode
+            in pnode
 
 let print_string_of_func_decl fdecl =
     let fdecl_node = print_dot_node "fdecl"

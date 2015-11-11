@@ -124,6 +124,7 @@ let compile (program : program) =
                   translate_stmt (indentation_level + 1) s
           | Continue -> "continue"
           | Break -> "break"
+          | Poison(chan) -> "" (* TODO *)
         ) in
 
     (* unpacks the arguments to a process from void *_args *)
