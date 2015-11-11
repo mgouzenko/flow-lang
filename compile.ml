@@ -3,6 +3,9 @@ open Ast;;
 let supported_channels = [Int;]
 
 let compile (program : program) =
+    let insert_boilerplate_header =
+      "#include <stdio.h>\n"
+    in
     (* Translate flow type to c type *)
     let rec translate_type (ftype: flow_type) = match ftype with
         Int -> "int"
@@ -148,6 +151,7 @@ let compile (program : program) =
 
     (* Translate the flow program to a c program *)
     match program with Declarations(declaration_list) ->
+        insert_boilerplate_header ^
         String.concat "\n"
         (List.map (fun decl ->
             match decl with
