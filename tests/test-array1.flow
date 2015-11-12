@@ -1,0 +1,10 @@
+int main() 
+{
+  array [3] <int> id = {1, 2, 3};
+  int i;
+  for (i=0; i < 3; i=i+1) {
+    printf("%d\n", test[i]);
+  }
+
+  return 0;
+}

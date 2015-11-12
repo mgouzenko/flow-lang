@@ -87,7 +87,7 @@ flow_type:
   | PROC                      {Proc}
   | STRING                    {String}
   | IDENTIFIER                {Struct($1)}
-  | ARRAY LBRACKET INT_LITERAL RBRACKET LT flow_type GT {Array($3, $6)}
+  | ARRAY LBRACKET INT_LITERAL RBRACKET LT flow_type GT IDENTIFIER {Array($3, $6, $8)}
   | LIST LT flow_type GT      {List($3)}
   | CHANNEL LT flow_type GT   {Channel($3, Nodir)}
   | IN flow_type              {Channel($2, In)}
