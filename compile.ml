@@ -94,7 +94,7 @@ let compile (program : program) =
         vdecl.declaration_id ^
         (match vdecl.declaration_type with
             Channel(t, Nodir) -> ("(" ^ translated_type ^
-                                  ") = malloc(sizeof(" ^ translated_type)
+                                  ") = malloc(sizeof(" ^ translated_type ^ "))")
           | _ -> (match vdecl.declaration_initializer with
                       Noexpr -> ""
                     | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
