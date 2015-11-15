@@ -3,8 +3,7 @@ open Ast;;
 (* semantically analyzed ast *)
 
 (* typed expression *)
-type texpr = expr * flow_type
-(*
+type texpr =
     TIntLiteral of int
   | TStringLiteral of string
   | TBoolLiteral of bool
@@ -19,7 +18,6 @@ type texpr = expr * flow_type
   | TAssign of string * texpr * flow_type
   | TFunctionCall of string * texpr list * flow_type
   | TNoexpr
-  *)
 
 (* typed statements *)
 (*

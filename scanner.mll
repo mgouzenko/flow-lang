@@ -49,7 +49,6 @@ rule token = parse
 | "continue"    { CONTINUE }
 | "string"      { STRING }
 | "list"        { LIST }
-| "array"		    { ARRAY }
 | "in"          { IN }
 | "out"         { OUT }
 | "channel"     { CHANNEL }

@@ -6,7 +6,7 @@ while(chan1 || chan2){
   poison ochan;
 }
 
-proc tokenGen(out int ochan, array [5] int tokens) {
+proc tokenGen(out int ochan, <int>[5] tokens) {
   int i;
   for (i = 0; i < 5; i = i+1) {
     tokens[i] -> ochan;
@@ -16,7 +16,7 @@ proc tokenGen(out int ochan, array [5] int tokens) {
 
 proc printer(in int chan) {
   while(chan) {
-    printf(“%d”, @chan);
+    printf("%d", @chan);
   }
 }
 
@@ -24,8 +24,8 @@ int main() {
   channel<int> chan1;
   channel<int> chan2;
   channel<int> chan3;
-  array [5] <int> arr1 = {1,3,6,9,11};
-  array [5] <int> arr2 = {2,4,6,8,10};
+  <int>[5] arr1 = {1,3,6,9,11};
+  <int>[5] arr2 = {2,4,6,8,10};
   tokenGen(chan1, arr1);
   tokenGen(chan2, arr2);
   interleaver(chan1, chan2, chan3);

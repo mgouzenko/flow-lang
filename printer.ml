@@ -96,7 +96,7 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Array(n, t) -> "array[" ^ string_of_int n ^ "]<" ^ string_of_type t ^ ">"
+    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
     | Struct(s) -> s;;
 
 let print_string_of_type t =

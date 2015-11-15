@@ -108,7 +108,7 @@ bool _wait_for_more(struct _int_channel *channel) {
                   "struct _" ^ translate_type t ^ "_channel* "
               with Not_found -> raise (Failure("Channel not supported")))
       | Struct(id) -> "struct " ^ id
-      | Array(size, t) ->  translate_type t ^ "[" ^ string_of_int size ^ "]"
+      | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
     let rec translate_expr (expr: expr) =
