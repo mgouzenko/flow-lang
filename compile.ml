@@ -22,7 +22,7 @@ let compile (program : program) =
                   "struct " ^ translate_type t ^ "_channel* "
               with Not_found -> raise (Failure("Channel not supported")))
       | Struct(id) -> "struct " ^ id
-      | Array(size, t) -> translate_type t
+      | Array(size, t) ->  translate_type t ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
     let rec translate_expr (expr: expr) =
@@ -81,6 +81,8 @@ let compile (program : program) =
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
         | FunctionCall(id, expr_list) -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         | StructInitializer(dot_initializer_list) -> "TODO"
+        | ArrayInitializer(expr_list) -> "{" ^ expr_list_to_string expr_list ^ "}"
+        | ArrayElement(id, expr) -> id ^ "[" ^ translate_expr expr ^ "]"
         | Noexpr -> ""
 
      in
@@ -92,7 +94,7 @@ let compile (program : program) =
         vdecl.declaration_id ^
         (match vdecl.declaration_type with
             Channel(t, Nodir) -> ("(" ^ translated_type ^
-                                  ") = malloc(sizeof(" ^ translated_type)
+                                  ") = malloc(sizeof(" ^ translated_type ^ "))")
           | _ -> (match vdecl.declaration_initializer with
                       Noexpr -> ""
                     | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in

@@ -40,7 +40,7 @@ rule token = parse
 | "for"         { FOR }
 | "while"       { WHILE }
 | "return"      { RETURN }
-| "poison"		{ POISON }
+| "poison"		  { POISON }
 | "int"         { INT }
 | "double"      { DOUBLE }
 | "char"        { CHAR }
@@ -49,7 +49,7 @@ rule token = parse
 | "continue"    { CONTINUE }
 | "string"      { STRING }
 | "list"        { LIST }
-| "array"		{ ARRAY }
+| "array"		    { ARRAY }
 | "in"          { IN }
 | "out"         { OUT }
 | "channel"     { CHANNEL }
