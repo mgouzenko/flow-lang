@@ -10,6 +10,7 @@
 %token DOUBLE CHAR BOOL INT STRING LIST ARRAY STRUCT
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
+%token PROC_CALL
 %token <int> INT_LITERAL
 %token <float> DOUBLE_LITERAL
 %token <char> CHAR_LITERAL
@@ -27,7 +28,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
-%left WRITE_CHANNEL READ_CHANNEL WAIT_FOR_MORE
+%left WRITE_CHANNEL READ_CHANNEL WAIT_FOR_MORE PROC_CALL
 %left DOT
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
@@ -186,6 +187,7 @@ expr:
   | WAIT_FOR_MORE IDENTIFIER {UnaryOp(Wait, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
+  | process_call {$1}
   | expr PLUS expr {BinOp($1, Plus, $3)}
   | expr MINUS expr {BinOp($1, Minus, $3)}
   | expr TIMES expr {BinOp($1, Times, $3)}
@@ -207,3 +209,7 @@ expr:
 function_call:
     IDENTIFIER LPAREN RPAREN {FunctionCall($1, [])}
   | IDENTIFIER LPAREN expr_list RPAREN {FunctionCall($1, $3)}
+
+process_call:
+    PROC_CALL IDENTIFIER LPAREN RPAREN {ProcessCall($2, [])}
+  | PROC_CALL IDENTIFIER LPAREN expr_list RPAREN {ProcessCall($2, $4)}

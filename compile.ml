@@ -90,6 +90,34 @@ bool _wait_for_more(struct _int_channel *channel) {
     }
     pthread_mutex_unlock(&channel->lock);
     return true;
+
+}
+
+struct _pthread_node{
+  pthread_t thread;
+  struct _pthread_node *next;
+};
+
+struct _pthread_node* _head = NULL;
+
+pthread_mutex_t _thread_list_lock;
+
+pthread_t* _make_pthread_t() {
+  pthread_mutex_lock(&_thread_list_lock);
+  struct _pthread_node *new_pthread = (struct _pthread_node *) malloc(sizeof(struct _pthread_node));
+  new_pthread->next = _head;
+  _head = new_pthread;
+  pthread_mutex_unlock(&_thread_list_lock);
+  return &(new_pthread->thread);
+}
+
+void _wait_for_finish(){
+  struct _pthread_node* curr = _head;
+  while(curr){
+    pthread_join(curr->thread, NULL);
+    curr = curr->next;
+  }
+
 }\n"
     in
     (* Translate flow type to c type *)
@@ -143,15 +171,15 @@ bool _wait_for_more(struct _int_channel *channel) {
             true -> "1"
           | false -> "0"
         in
-        (*let rec expr_list_to_string expr_list = 
-          match expr_list with  
-            [] -> ""
-          | first::second::tail -> translate_expr first ^ "," ^ translate_expr second ^ "," ^ expr_list_to_string tail 
-          | first::tail -> translate_expr first ^ expr_list_to_string tail 
-        in *)
         let rec expr_list_to_string expr_list =
           List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
              (translate_expr (List.hd expr_list)) (List.tl expr_list) 
+        in
+        let translate_process_call id expr_list =
+          let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
+          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
+          let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) &_args);\n" in 
+          "{\n" ^ pthread_decl ^ args_struct ^ pthread_creation ^ "\n}"
         in
         match expr with
           IntLiteral(i) -> string_of_int i
@@ -166,12 +194,13 @@ bool _wait_for_more(struct _int_channel *channel) {
             translate_unary_op unary_op (translate_expr expr) 
         | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
         | FunctionCall(id, expr_list) -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
+        | ProcessCall(id, expr_list) -> translate_process_call id expr_list
         | StructInitializer(dot_initializer_list) -> "TODO"
         | ArrayInitializer(expr_list) -> "{" ^ expr_list_to_string expr_list ^ "}"
         | ArrayElement(id, expr) -> id ^ "[" ^ translate_expr expr ^ "]"
         | Noexpr -> ""
 
-     in
+    in
 
     (* Translate flow variable declaration to c variable declaration *)
     let translate_vdecl (vdecl : variable_declaration) =
@@ -180,7 +209,8 @@ bool _wait_for_more(struct _int_channel *channel) {
         vdecl.declaration_id ^
         (match vdecl.declaration_type with
             Channel(t, Nodir) -> ("= (" ^ translated_type ^
-                                  ") malloc(sizeof(" ^ translated_type ^ "))")
+                                  ") malloc(sizeof(" ^ "struct _int_channel" ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
+                                  "_init_int_channel(" ^ vdecl.declaration_id ^ ")") (* AWFUL code TODO: must fix *)
           | _ -> (match vdecl.declaration_initializer with
                       Noexpr -> ""
                     | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
@@ -228,17 +258,19 @@ bool _wait_for_more(struct _int_channel *channel) {
 
     (* Translate flow function declaration to c function declaration *)
     let translate_fdecl (fdecl : function_declaration) =
+        let opening_stmts = if fdecl.function_name = "main" then "pthread_mutex_init(&_thread_list_lock, NULL);\n" else "" in
+        let closing_stmts = if fdecl.function_name = "main" then "_wait_for_finish();\n" else "" in
         let arg_decl_string_list = (List.map translate_vdecl fdecl.arguments) in
         (match fdecl.return_type with
             Proc -> ("struct _" ^ fdecl.function_name ^ "_args{\n\t" ^
-                     String.concat ";\n\t" arg_decl_string_list ^ ";\n};\n")
+                     String.concat ";\n\t" (List.rev arg_decl_string_list) ^ ";\n};\n")
           | _ -> "") ^
         (translate_type fdecl.return_type) ^ " " ^
         fdecl.function_name ^
         (match fdecl.return_type with
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
-          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^
-        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ "\nreturn 0;}"
+          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^
+        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ closing_stmts ^ "\nreturn 0;}" (* WTF: TODO: return 0 should NOT be at the end of every function*)
 
     (* Tranlsate flow struct declaration to c struct declaration *)
     and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in
