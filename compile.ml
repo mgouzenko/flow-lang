@@ -41,7 +41,7 @@ int _init_int_channel(struct _int_channel *channel){
   return 0;
 }
 
-void _enqueue_int(int element, struct int_channel *channel){
+void _enqueue_int(int element, struct _int_channel *channel){
     pthread_mutex_lock(&channel->lock);
     while(channel->size >= channel->MAX_SIZE)
         pthread_cond_wait(&channel->write_ready, &channel->lock);
@@ -57,7 +57,7 @@ void _enqueue_int(int element, struct int_channel *channel){
     pthread_mutex_unlock(&channel->lock);
 }
 
-int _dequeue_int(struct int_channel *channel){
+int _dequeue_int(struct _int_channel *channel){
     pthread_mutex_lock(&channel->lock);
     assert(channel->size != 0);
 
@@ -70,14 +70,14 @@ int _dequeue_int(struct int_channel *channel){
     return result;
 }
 
-void _poison(struct int_channel *channel) {
+void _poison(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     channel->poisoned = true;
     pthread_cond_signal(&channel->read_ready);
     pthread_mutex_unlock(&channel->lock);
 }
 
-bool _wait_for_more(struct int_channel *channel) {
+bool _wait_for_more(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     while(channel->size == 0) {
         if(channel->poisoned){
@@ -105,7 +105,7 @@ bool _wait_for_more(struct int_channel *channel) {
       | Channel(t, dir) ->
               (try
                   let _ = List.find (fun e -> t = e) supported_channels in
-                  "struct " ^ translate_type t ^ "_channel* "
+                  "struct _" ^ translate_type t ^ "_channel* "
               with Not_found -> raise (Failure("Channel not supported")))
       | Struct(id) -> "struct " ^ id
       | Array(size, t) ->  translate_type t ^ "[" ^ string_of_int size ^ "]"
@@ -127,7 +127,7 @@ bool _wait_for_more(struct int_channel *channel) {
           | Geq -> exp1 ^ ">=" ^ exp2
           | And -> exp1 ^ "&&" ^ exp2
           | Or -> exp1 ^ "||" ^ exp2
-          | Send -> "enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+          | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
         let translate_unary_op unary_op exp =
@@ -135,8 +135,8 @@ bool _wait_for_more(struct int_channel *channel) {
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
            (* TODO: In semantic analysis we need to check type to dequeue *)
-          | Retrieve -> "dequeue_int(" ^ exp ^ ")"
-          | Wait -> "wait_for_more(" ^ exp ^ ")"
+          | Retrieve -> "_dequeue_int(" ^ exp ^ ")"
+          | Wait -> "_wait_for_more(" ^ exp ^ ")"
         in
         let translate_bool b = 
           match b with
@@ -179,8 +179,8 @@ bool _wait_for_more(struct int_channel *channel) {
         translated_type ^ " " ^
         vdecl.declaration_id ^
         (match vdecl.declaration_type with
-            Channel(t, Nodir) -> ("(" ^ translated_type ^
-                                  ") = malloc(sizeof(" ^ translated_type ^ "))")
+            Channel(t, Nodir) -> ("= (" ^ translated_type ^
+                                  ") malloc(sizeof(" ^ translated_type ^ "))")
           | _ -> (match vdecl.declaration_initializer with
                       Noexpr -> ""
                     | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
@@ -210,9 +210,9 @@ bool _wait_for_more(struct int_channel *channel) {
           | While(e, s) ->
                   "while(" ^ translate_expr e ^ ")" ^
                   translate_stmt (indentation_level + 1) s
-          | Continue -> "continue"
-          | Break -> "break"
-          | Poison(chan) -> "" (* TODO *)
+          | Continue -> "continue;"
+          | Break -> "break;"
+          | Poison(chan) -> "_poison(" ^ translate_expr chan ^ ");"
         ) in
 
     (* unpacks the arguments to a process from void *_args *)
@@ -238,7 +238,7 @@ bool _wait_for_more(struct int_channel *channel) {
         (match fdecl.return_type with
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
           | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^
-        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ "}"
+        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ "\nreturn 0;}"
 
     (* Tranlsate flow struct declaration to c struct declaration *)
     and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in

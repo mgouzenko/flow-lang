@@ -17,7 +17,7 @@ proc printer(in int chan) {
   }
 }
 
-void main() {
+int main() {
   channel<int> chan1;
   channel<int> chan2;
   channel<int> chan3;
