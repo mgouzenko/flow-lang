@@ -185,33 +185,41 @@ int main() {
     int array1[5] = {1, 2, 3, 4, 5};
     int array2[5] = {0, 10, 0, 10, 0};
 
-    pthread_t* input1_t = make_pthread_t();
-    struct _token_gen_for_array_size_five_args array1_gen_args = {
-        .ochan = chan1,
-        .input = array1,
+    {
+        pthread_t* _t = make_pthread_t();
+        struct _token_gen_for_array_size_five_args _args = {
+            chan1,
+            array1,
+        };
+        pthread_create(_t, NULL, token_gen_for_array_size_five, (void *) &_args);
     };
-    pthread_create(input1_t, NULL, token_gen_for_array_size_five, (void *) &array1_gen_args);
+    
+    {
+    	pthread_t* _t = make_pthread_t();
+        struct _token_gen_for_array_size_five_args _args = {
+            chan2,
+            array2,
+        };
+        pthread_create(_t, NULL, token_gen_for_array_size_five, (void *) &_args);
+    };
 
-	pthread_t* input2_t = make_pthread_t();
-    struct _token_gen_for_array_size_five_args array2_gen_args = {
-        .ochan = chan2,
-        .input = array2,
+    {
+        pthread_t* interleaver_t = make_pthread_t();
+        struct _interleaver_args interleaver_t_args = {
+            chan1,
+            chan2,
+            ochan,
+        };
+        pthread_create(interleaver_t, NULL, interleaver, (void *) &interleaver_t_args);
     };
-    pthread_create(input2_t, NULL, token_gen_for_array_size_five, (void *) &array2_gen_args);
 
-    pthread_t* interleaver_t = make_pthread_t();
-    struct _interleaver_args interleaver_t_args = {
-        .chan1 = chan1,
-        .chan2 = chan2,
-        .ochan = ochan,
-    };
-    pthread_create(interleaver_t, NULL, interleaver, (void *) &interleaver_t_args);
-
-    pthread_t* print_int_t = make_pthread_t();
-    struct _print_int_args print_int_t_args = {
-        .chan = ochan,
-    };
-    pthread_create(print_int_t, NULL, print_int, (void *) &print_int_t_args);
+    {
+        pthread_t* print_int_t = make_pthread_t();
+        struct _print_int_args print_int_t_args = {
+            ochan,
+        };
+        pthread_create(print_int_t, NULL, print_int, (void *) &print_int_t_args);
+    }
 
 	wait_for_finish();
     return 0;

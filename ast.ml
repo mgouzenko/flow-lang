@@ -3,7 +3,7 @@ type bin_op =
       | Neq  | Lt    | Leq   | Gt     | Geq    | Eq
       | Send | And   | Or    | Assign
 
-type unary_op = Retrieve | Negate | Not | Wait
+type unary_op = Retrieve | Negate | Not | (* TEMPORARY, until we have symbol tables *) Wait
 type direction = In | Out | Nodir
 
 (* All of the primitive and nonprimitive types *)
@@ -40,6 +40,7 @@ and expr =
   | UnaryOp of unary_op * expr
   | Assign of string * expr
   | FunctionCall of string * expr list
+  | ProcessCall of string * expr list (* TEMPORARY, until we have symbol tables *)
   | Noexpr
 
 type variable_declaration = {
