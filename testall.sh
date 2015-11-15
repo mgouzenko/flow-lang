@@ -75,7 +75,7 @@ Check() {
     Run "$FLOWC" "-c" $1 ">" ${basename}.c &&
     #echo "Flow to C:" &&
     #cat ${basename}.c &&
-    gcc -lpthread ${basename}.c  2>&1 &&
+    gcc -pthread ${basename}.c  2>&1 &&
     ./a.out > ${basename}.c.out
     Compare ${basename}.c.out ${reffile}.out ${basename}.c.diff
 
