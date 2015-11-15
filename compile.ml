@@ -11,7 +11,7 @@ let compile (program : program) =
  #include <stdlib.h>
  #include <stdbool.h>
 
-struct int_channel{
+struct _int_channel{
   int queue[100];
   int front;
   int back;     // One past the last element
@@ -23,7 +23,7 @@ struct int_channel{
   pthread_cond_t read_ready;
 };
 
-int init_int_channel(struct int_channel *channel){
+int _init_int_channel(struct _int_channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
       printf(\"Mutex init failed\");
       return 1;
@@ -41,7 +41,7 @@ int init_int_channel(struct int_channel *channel){
   return 0;
 }
 
-void enqueue_int(int element, struct int_channel *channel){
+void _enqueue_int(int element, struct int_channel *channel){
     pthread_mutex_lock(&channel->lock);
     while(channel->size >= channel->MAX_SIZE)
         pthread_cond_wait(&channel->write_ready, &channel->lock);
@@ -57,7 +57,7 @@ void enqueue_int(int element, struct int_channel *channel){
     pthread_mutex_unlock(&channel->lock);
 }
 
-int dequeue_int(struct int_channel *channel){
+int _dequeue_int(struct int_channel *channel){
     pthread_mutex_lock(&channel->lock);
     assert(channel->size != 0);
 
@@ -70,14 +70,14 @@ int dequeue_int(struct int_channel *channel){
     return result;
 }
 
-void poison(struct int_channel *channel) {
+void _poison(struct int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     channel->poisoned = true;
     pthread_cond_signal(&channel->read_ready);
     pthread_mutex_unlock(&channel->lock);
 }
 
-bool wait_for_more(struct int_channel *channel) {
+bool _wait_for_more(struct int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     while(channel->size == 0) {
         if(channel->poisoned){
