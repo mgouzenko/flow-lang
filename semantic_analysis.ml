@@ -58,6 +58,7 @@ type environment = {
     return_type : flow_type option;
     symbol_table: symtab;
     funcs : function_entry list;
+    in_loop: bool;
 }
 
 let rec find_variable_decl (symbol_table: symtab) (name : string) : flow_type =
@@ -156,10 +157,59 @@ let check_arg_declaration (env: environment) (decl: variable_declaration) =
                             decl.declaration_id ^
                             ": Cannot have default values in function declaration.")) in
 
-let check_stmt (env: environment) (stmt: stmt) =
-    "hello" in
+let is_logical (expr: typed_expr) = match expr with
+      _, Int | _, Bool | _, Channel(t, dir) | _, Char | _, String -> true
+    | _ -> false
 
-let check_stmt_list (env: environment) (stmt_list: stmt list) =
+let rec check_stmt (env: environment) (stmt: stmt) = match stmt with
+      Expr(e) -> (env, SExper(check_expr env e))
+    | Block(stmt_list) ->
+            let _, checked_stmts = check_stmt_list env stmt_list in
+            (env, SBlock(checked_stmts))
+    | Return(e) ->
+            let expr_details, t = check_expr env e in
+            if t = env.return_type then (env, SReturn(check_expr env e))
+            else raise(Error("Expression does not match return_type"))
+    | Declaration(vdecl) -> check_variable_declaration env vdecl
+    | If(e, s1, s2) ->
+            let checked_expr = check_expr env e
+            and _, checked_stmt1 = check_stmt env s1
+            and _, checked_stmt2 = check_stmt env s2 in
+            if is_logical checked_expr then
+                (env, SIf(checked_expr, checked_stmt1, checked_stmt2))
+            else raise(Error("Invalid expression in \"if\" statement"))
+    | For(e1, e2, e3, s) ->
+            let checked_expr1 = check_expr env e1
+            and checked_expr2 = check_expr env e2
+            and checked_expr3 = check_expr env e3
+            and _, checked_stmt = check_stmt {env with in_loop = true} s in
+            if is_logical checked_expr1 &&
+               is_logical checked_expr2 &&
+               is_logical checked_expr3 then
+                   (env, SFor(checked_expr1,
+                             checked_expr2,
+                             checked_expr3,
+                             checked_stmt))
+            else raise(Error("Invalid expression in \"for\" statement"))
+    | While(e, s) ->
+            let checked_expr = check_expr env e
+            and _, checked_stmt = check_stmt {env with in_loop = true} s in
+            if is_logical checked_expr then
+                SWhile(checked_expr, checked_stmt)
+            else raise(Error("Invalid expression in \"while\" statement"))
+    | Continue ->
+            if env.in_loop = true then (env, SContinue)
+            else raise(Error("Not in a loop")
+    | Break ->
+            if env.in_loop = true then (env, SBreak)
+            else raise(Error("Not in a loop")
+    | Poison(e) ->
+            let expr_details, t = check_expr e in
+            match t with
+                  Channel(t, dir) -> (env, SPoison(expr_details, t))
+                | _ -> raise(Error("Attempting to poison a non-channel"))
+
+and rec check_stmt_list (env: environment) (stmt_list: stmt list) =
     let new_env, checked_stmts = List.fold_left
     (fun acc stmt ->
         let env', stmt_node = check_stmt (fst acc) stmt in
@@ -223,8 +273,9 @@ let check_declaration (env: environment) (decl: s_declaration) -> (environment, 
 let check_progam (prog: program) =
     let env = {
         return_type = None;
-        scope = { parent : None; variables : []; };
-        funcs : [];
+        symbol_table = { parent : None; variables : []; };
+        funcs = [];
+        in_loop = false;
     } in
 
     (* acc is the accumulator; it's a tuple of env, decl_list.
