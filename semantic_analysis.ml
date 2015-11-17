@@ -146,13 +146,73 @@ let check_variable_declaration (env: environment) (decl: variable_declaration) =
                 s_declaration_id = decl.declaration_id;
                 s_declaration_initializer = (expr_details, t) } in
             (new_env, s_var_decl))
-    else raise (Error(decl.declaration_id ^ ": Declaration type does not match expression"))
+    else raise (Error(decl.declaration_id ^ ": Declaration type does not match expression")) in
 
-and check_function_declaration (env: environment) (decl: function_declaration) =
-    "hello"
+let check_arg_declaration (env: environment) (decl: variable_declaration) =
+    match decl.declaration_initializer with
+        (* Todo: make sure channels have correct directions *)
+        Noexpr -> check_variable_declaration env decl
+        | _ -> raise (Error("Error in argument declaration for " ^
+                            decl.declaration_id ^
+                            ": Cannot have default values in function declaration.")) in
 
-and check_struct_declaration (env: environment) (decl: struct_declaration) =
-    "hello"
+let check_stmt (env: environment) (stmt: stmt) =
+    "hello" in
+
+let check_stmt_list (env: environment) (stmt_list: stmt list) =
+    let new_env, checked_stmts = List.fold_left
+    (fun acc stmt ->
+        let env', stmt_node = check_stmt (fst acc) stmt in
+        (env', stmt_node::(snd acc)))
+    (env, []) fdecl.arguments in
+    (new_env, List.rev checked_stmts)
+
+let check_function_declaration (env: environment) (fdecl: function_declaration) =
+    (* Get the types of the function's parameters *)
+    let p_types = List.map (fun vdecl -> vdecl.declaration_type) fdecl.arguments in
+
+    let f_entry = { name = fdecl.function_name;
+                    param_types: p_types;
+                    ret_type: flow_type;} in
+
+    let new_funcs = f_entry::env.funcs in
+
+    (* Make a new symbol table for the function scope *)
+    let new_symbol_table = { parent = env.symbol_table;
+                             variables = [] } in
+
+    (* Add the function currently being checked to the environment. This is
+     * needed in the case of recursion (ie encountering a function call
+     * referencing this function in the body). Furthermore, set the return
+     * type and symbol table with now-empty local scope *)
+    let new_env = { env with funcs = new_funcs;
+                             return_type = Some(fdecl.return_type);
+                             symbol_table = new_symbol_table } in
+
+    (* Get the arguments into the scope by folding the environment
+     * over the parameter list *)
+    let env_with_args, arg_decl_list = List.fold_left
+    (fun acc arg_decl ->
+        let env', arg_node = check_arg_declaration (fst acc) arg_decl in
+        (env', arg_node::(snd acc)))
+    (new_env, []) fdecl.arguments in
+
+    (* Check the function body. Discard the environment. We won't need it
+     * outside the scope of the function body. *)
+    let _, func_body = check_stmt_list env_with_args fdecl.body in
+
+    (* Create the function node to return *)
+    let func_node = { s_return_type = fdecl.return_type;
+      s_function_name = fdecl.function_name;
+      s_arguments = arg_decl_list;
+      s_has_definition = true;
+      s_body = func_body; } in
+
+    (* Return the original environment, with the current function appended *)
+    ({ env with funcs = new_funcs }, func_node) in
+
+let check_struct_declaration (env: environment) (decl: struct_declaration) =
+    "hello" in
 
 let check_declaration (env: environment) (decl: s_declaration) -> (environment, s_declaration) =
     match decl with
