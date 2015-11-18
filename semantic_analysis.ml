@@ -104,6 +104,31 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                 match t2 with
                     | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
                     | _ -> raise (Invalid_argument("Invalid write to channel")) in
+let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr = 
+  let expr_details, t = e
+  in
+  match op with 
+    Retrieve -> 
+      (match t with
+        Channel -> TUnaryOp(op, e), Channel
+        | _ -> raise (Invalid_argument(
+            "operator " ^ string_of_unop op ^
+            " not compatible with " ^ string_of_type t)))
+    | Negate -> 
+      (match t with 
+        Int -> TUnaryOp(op, e), Int
+      | Double -> TUnaryOp(op, e), Double
+      | _ -> raise (Invalid_argument(
+          "operator " ^ string_of_unop op ^
+          " not compatible with " ^ string_of_type t)))
+    | Not -> 
+      (match t with 
+        Bool -> TUnaryOp(op, e), Bool
+      | _ -> raise(Invalid_argument(
+          "operator " ^ string_of_unop op ^
+          " not compatible with " ^ string_of_type t)))
+    | Wait -> () (* Wait needs to be removed *)
+in
 
 let rec check_expr (env : environment) (e : expr) : typed_expr =
     match e with
@@ -124,7 +149,9 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ArrayInitializer(expr_list) -> TNoexpr, Void
     | ArrayElement(id, index_exp) -> TNoexpr, Void
-    | UnaryOp(un_op, e) -> TNoexpr, Void
+    | UnaryOp(unary_op, e) -> 
+        let checked_expr = check_expr env e
+        in check_unaryOp checked_expr unary_op
     | FunctionCall(name, actual_list) -> TNoexpr, Void
     | Noexpr -> TNoexpr, Void in
 
