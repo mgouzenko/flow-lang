@@ -104,13 +104,14 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                 match t2 with
                     | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
                     | _ -> raise (Invalid_argument("Invalid write to channel")) in
+
 let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr = 
   let expr_details, t = e
   in
   match op with 
     Retrieve -> 
       (match t with
-        Channel -> TUnaryOp(op, e), Channel
+        Channel(t, dir) -> TUnaryOp(op, e), Channel(t, dir)
         | _ -> raise (Invalid_argument(
             "operator " ^ string_of_unop op ^
             " not compatible with " ^ string_of_type t)))
@@ -127,9 +128,19 @@ let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
       | _ -> raise(Invalid_argument(
           "operator " ^ string_of_unop op ^
           " not compatible with " ^ string_of_type t)))
-    | Wait -> () (* Wait needs to be removed *)
-in
+    | Wait -> TNoexpr, Void (* Wait needs to be removed *) in
 
+let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
+  let env_funcs = env.funcs in 
+    let rec find_func efuncs = 
+      match efuncs with 
+        [] -> raise (Failure("Undeclared function " ^ name))
+      | f_entry::tl -> if f_entry.name <> name then find_func tl else 
+         if f_entry.param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
+          raise (Failure("Incorrect paramater types for function call " ^ name)) else
+          TFunctionCall(name, actual_list), f_entry.ret_type  
+    in find_func env_funcs  
+in
 let rec check_expr (env : environment) (e : expr) : typed_expr =
     match e with
       IntLiteral(i) -> TIntLiteral(i), Int
@@ -152,7 +163,8 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
     | UnaryOp(unary_op, e) -> 
         let checked_expr = check_expr env e
         in check_unaryOp checked_expr unary_op
-    | FunctionCall(name, actual_list) -> TNoexpr, Void
+    | FunctionCall(name, actual_list) -> 
+        check_function_call name (List.map (fun exp -> check_expr env exp) actual_list) env
     | Noexpr -> TNoexpr, Void in
 
 let check_variable_declaration (env: environment) (decl: variable_declaration) =
