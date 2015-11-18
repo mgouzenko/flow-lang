@@ -19,7 +19,7 @@ type environment = {
     in_loop: bool;
 }
 
-let check_progam (prog: program) =
+let check_progam (prog: program) : s_program =
 
 let rec find_variable_decl (symbol_table: symtab) (name : string) : variable_declaration =
     try
@@ -132,8 +132,8 @@ let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
   let env_funcs = env.funcs in 
-    let rec find_func efuncs = 
-      match efuncs with 
+    let rec find_func efuncs =
+      match efuncs with
         [] -> raise (Failure("Undeclared function " ^ name))
       | f_entry::tl -> if f_entry.name <> name then find_func tl else 
          if f_entry.param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then

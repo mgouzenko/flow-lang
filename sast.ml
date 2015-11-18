@@ -60,4 +60,4 @@ type s_declaration =
     | SFuncDecl of s_function_declaration
     | SStructDecl of s_struct_declaration
 
-type s_ast = s_declaration list
+type s_program = s_declaration list
