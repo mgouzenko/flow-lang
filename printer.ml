@@ -69,12 +69,6 @@ let rec print_string_of_expr = function
   | UnaryOp(op, e) -> let num = print_string_of_expr e
                       and op = print_string_of_unop op
                       in let _ = print_dot_edge op num in op
-  | Assign(id, e) -> let node1 = print_dot_node id
-                     and node2 = print_string_of_expr e
-                     and op = print_dot_node "="
-                     in let _ = print_dot_edge op node1
-                     and _ = print_dot_edge op node2
-                     in op
   | FunctionCall(f, el) ->
           let f_node = print_dot_node f in
           let enodes = List.map print_string_of_expr el in
@@ -190,7 +184,7 @@ let print_string_of_decl = function
     | FuncDecl(fd) -> print_string_of_func_decl fd
     | StructDecl(sd) -> print_string_of_struct_decl sd
 
-let print_string_of_program = function
-    Declarations(decls) -> let nodes = List.map print_string_of_decl decls in
-                           let program = print_dot_node "Program" in
-                           List.iter (function num -> print_dot_edge program num) nodes
+let print_string_of_program (prog: program) =
+    let nodes = List.map print_string_of_decl prog in
+    let program = print_dot_node "Program" in
+    List.iter (function num -> print_dot_edge program num) nodes

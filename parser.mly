@@ -38,7 +38,7 @@
 %%
 
 program:
-  declarations EOF {Declarations(List.rev $1)}
+  declarations EOF {List.rev $1}
 
 declarations:
     /* nothing */ { [] }
@@ -187,7 +187,6 @@ expr:
   | WAIT_FOR_MORE IDENTIFIER {UnaryOp(Wait, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
-  | process_call {$1}
   | expr PLUS expr {BinOp($1, Plus, $3)}
   | expr MINUS expr {BinOp($1, Minus, $3)}
   | expr TIMES expr {BinOp($1, Times, $3)}
@@ -209,7 +208,3 @@ expr:
 function_call:
     IDENTIFIER LPAREN RPAREN {FunctionCall($1, [])}
   | IDENTIFIER LPAREN expr_list RPAREN {FunctionCall($1, $3)}
-
-process_call:
-    PROC_CALL IDENTIFIER LPAREN RPAREN {ProcessCall($2, [])}
-  | PROC_CALL IDENTIFIER LPAREN expr_list RPAREN {ProcessCall($2, $4)}

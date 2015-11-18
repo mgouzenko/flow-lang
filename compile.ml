@@ -192,9 +192,7 @@ void _wait_for_finish(){
              translate_bin_op (translate_expr expr1) bin_op (translate_expr expr2)
         | UnaryOp(unary_op, expr) -> 
             translate_unary_op unary_op (translate_expr expr) 
-        | Assign(id, expr) -> id ^ "=" ^ translate_expr expr
         | FunctionCall(id, expr_list) -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
-        | ProcessCall(id, expr_list) -> translate_process_call id expr_list
         | StructInitializer(dot_initializer_list) -> "TODO"
         | ArrayInitializer(expr_list) -> "{" ^ expr_list_to_string expr_list ^ "}"
         | ArrayElement(id, expr) -> id ^ "[" ^ translate_expr expr ^ "]"
@@ -276,12 +274,11 @@ void _wait_for_finish(){
     and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in
 
     (* Translate the flow program to a c program *)
-    match program with Declarations(declaration_list) ->
-        insert_boilerplate_header ^
-        String.concat "\n"
-        (List.map (fun decl ->
-            match decl with
-              VarDecl(vdecl) -> translate_vdecl vdecl
-            | FuncDecl(fdecl) -> translate_fdecl fdecl
-            | StructDecl(sdecl) -> translate_struct_decl sdecl)
-        declaration_list) ^ "\n"
+    insert_boilerplate_header ^
+    String.concat "\n"
+    (List.map (fun decl ->
+        match decl with
+          VarDecl(vdecl) -> translate_vdecl vdecl
+        | FuncDecl(fdecl) -> translate_fdecl fdecl
+        | StructDecl(sdecl) -> translate_struct_decl sdecl)
+    program) ^ "\n"

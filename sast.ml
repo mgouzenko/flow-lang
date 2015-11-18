@@ -15,7 +15,7 @@ and expr_details =
   | TStructInitializer of s_dot_initializer list
   | TArrayInitializer of typed_expr list
   | TArrayElement of string * typed_expr
-  | TId of string * flow_type
+  | TId of string
   | TBinOp of typed_expr * bin_op * typed_expr
   | TUnaryOp of unary_op * typed_expr
   | TAssign of string * typed_expr

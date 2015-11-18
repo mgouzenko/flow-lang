@@ -1,48 +1,6 @@
 open Ast;;
 open Sast;;
 
-(* helper functions, TODO: need to be modularized, some used in printer.ml *) 
-
-
-let rec string_of_type = function
-      Int ->  "int"
-    | Float -> "float"
-    | Double -> "double"
-    | Bool -> "bool"
-    | Char -> "char"
-    | Void -> "void"
-    | Proc -> "proc"
-    | String -> "string"
-    | Channel(t, Nodir) -> "channel<" ^ string_of_type t ^ ">"
-    | Channel(t, In) -> "in " ^ string_of_type t
-    | Channel(t, Out) -> "out " ^ string_of_type t
-    | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
-    | Struct(s) -> s;;
-
-let rec string_of_op = function
-      Plus -> "+"
-    | Minus -> "-"
-    | Times -> "*"
-    | Divide -> "/"
-    | Modulo -> "%"
-    | Neq -> "!="
-    | Lt -> "<"
-    | Leq -> "<="
-    | Gt -> ">"
-    | Geq -> ">="
-    | Eq -> "=="
-    | Send -> "->"
-    | And -> "&&"
-    | Or -> "||"
-    | Assign -> "="
-    | Retrieve -> "@"
-    | Negate -> "-"
-    | Not -> "!"
-    | Wait -> "^"
-
-(* translate flow ast to s_ast *)
-
 type symtab = {
     parent : symtab option;
     variables : variable_declaration list;
@@ -61,72 +19,114 @@ type environment = {
     in_loop: bool;
 }
 
-let rec find_variable_decl (symbol_table: symtab) (name : string) : flow_type =
+let check_progam (prog: program) =
+
+let rec find_variable_decl (symbol_table: symtab) (name : string) : variable_declaration =
     try
         List.find (fun (var_decl) -> var_decl.declaration_id = name) symbol_table.variables
     with Not_found ->
         match symbol_table.parent with
-            Some(parent) -> find_variable_type parent name
-          | _ -> raise Not_found
+            Some(parent) -> find_variable_decl parent name
+          | _ -> raise Not_found in
 
 let find_variable_type (symbol_table: symtab) (name : string) : flow_type =
     let vdecl = find_variable_decl symbol_table name in
-    vdecl.declaration_type
+    vdecl.declaration_type in
 
-let type_of_texpr = function
-      TIntLiteral(i) -> Int
-    | TStringLiteral(s) -> String
-    | TBoolLiteral(b) -> Bool
-    | TCharLiteral(c) -> Char
-    | TDoubleLiteral(d) -> Double
-    | TStructInitializer(_, t) -> t
-    | TArrayInitializer(_, t) -> t
-    | TArrayElement(_, _, t) -> t
-    | TId(_, t) -> t
-    | TBinOp(_, _, _, t) -> t
-    | TUnaryOp(_, _, t) -> t
-    | TAssign(_, _, t) -> t
-    | TFunctionCall(_, _, t) -> t
-    | TNoexpr -> raise (Error("Type of expression called on Noexpr"))
+let is_logical (expr: typed_expr) : bool =
+    match expr with
+          _, Int | _, Bool | _, Char | _, String -> true
+        | _, Channel(t, dir) -> true
+        | _ -> false in
 
-let check_binop (e1 : texpr) (e2 : texpr) (op : bin_op) : texpr =
-    let t1 = type_of_texpr e1
-    and t2 = type_of_texpr e2
+let string_of_binop = function
+      Plus -> "+"
+    | Minus -> "-"
+    | Times -> "*"
+    | Divide -> "/"
+    | Modulo -> "%"
+    | Neq -> "!="
+    | Lt -> "<"
+    | Leq -> "<="
+    | Gt -> ">"
+    | Geq -> ">="
+    | Eq -> "=="
+    | Send -> "->"
+    | And -> "&&"
+    | Or -> "||"
+    | Assign -> "=" in
+
+let string_of_unop = function
+    | Retrieve -> "@"
+    | Negate -> "-"
+    | Not -> "!"
+    | Wait -> "^" in
+
+let rec string_of_type = function
+      Int ->  "int"
+    | Float -> "float"
+    | Double -> "double"
+    | Bool -> "bool"
+    | Char -> "char"
+    | Void -> "void"
+    | Proc -> "proc"
+    | String -> "string"
+    | Channel(t, Nodir) -> "channel<" ^ string_of_type t ^ ">"
+    | Channel(t, In) -> "in " ^ string_of_type t
+    | Channel(t, Out) -> "out " ^ string_of_type t
+    | List(t) -> "list<" ^ string_of_type t ^ ">"
+    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
+    | Struct(s) -> s in
+
+let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
+    let expr_details1, t1 = e1
+    and expr_details2, t2 = e2
     in
-    match (op) with
-      (Plus | Minus | Times | Divide | Modulo | Lt | Leq | Gt | Geq) ->
-         (match (t1, t2) with
-          | (Int, Int) -> TBinop(e1, op, e2, Int)
-          | (_, _) -> raise (Error("operator " ^ string_of_binop op ^ " not"
-            ^ " compatible with " ^ string_of_type t1 ^ " and " ^ string_of_type t2))
-    | (_) -> raise (Error("finish checking binops"))
+    match op with
+          (Plus | Minus | Times | Divide | Modulo | Lt | Leq | Gt | Geq) ->
+              (match (t1, t2) with
+                  | (Int, Int) -> TBinOp(e1, op, e2), Int
+                  | (_, _) -> raise (Invalid_argument(
+                        "operator " ^ string_of_binop op ^
+                        " not compatible with " ^ string_of_type t1 ^
+                        " and " ^ string_of_type t2)))
+        | (And | Or | Eq | Neq ) ->
+                if is_logical e1 && is_logical e2 then TBinOp(e1, op, e2), Bool
+                else raise (Invalid_argument("Attempting a logical operation" ^
+                                             "on invalid operands"))
+        | Assign ->
+                (match expr_details1 with
+                    TId(name) ->
+                        if t1 = t2 then TBinOp(e1, op, e2), t1
+                        else raise (Invalid_argument("Identifier type does not match expression"))
+                  | _ -> raise (Invalid_argument("Attempting assignment to non-id")))
+        | Send ->
+                match t2 with
+                    | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
+                    | _ -> raise (Invalid_argument("Invalid write to channel")) in
 
-let rec check_expr (env : environment) (e : expr) : texpr =
+let rec check_expr (env : environment) (e : expr) : typed_expr =
     match e with
-      IntLiteral(i) -> TIntLiteral(i)
-    | StringLiteral(s) -> TStringLiteral(s)
-    | BoolLiteral(b) -> TBoolLiteral(b)
-    | CharLiteral(c) -> TCharLiteral(c)
-    | DoubleLiteral(d) -> TDoubleLiteral(d)
+      IntLiteral(i) -> TIntLiteral(i), Int
+    | StringLiteral(s) -> TStringLiteral(s), String
+    | BoolLiteral(b) -> TBoolLiteral(b), Bool
+    | CharLiteral(c) -> TCharLiteral(c), Char
+    | DoubleLiteral(d) -> TDoubleLiteral(d), Double
     | Id(s) ->
-        let t = 
-            try
-                find_variable_type env.symbol_table s
-            with Not_found -> raise (Error("Unrecognized identifier " ^ s))
-        in TId(s, t)
+        let t =
+            (try find_variable_type env.symbol_table s
+            with Not_found -> raise (Failure("Undeclared identifier " ^ s)))
+        in TId(s), t
     | BinOp(e1, op, e2) ->
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
         in check_binop checked_e1 checked_e2 op
-    (*
-    | TStructInitializer of dot_initializer list * flow_type
-    | TArrayInitializer of texpr list * flow_type
-    | TArrayElement of string * texpr * flow_type
-    | TUnaryOp of unary_op * texpr * flow_type
-    | TAssign of string * texpr * flow_type
-    | TFunctionCall of string * texpr list * flow_type
-    | TNoexpr
-    *)
+    | StructInitializer(dot_init_list) -> TNoexpr, Void
+    | ArrayInitializer(expr_list) -> TNoexpr, Void
+    | ArrayElement(id, index_exp) -> TNoexpr, Void
+    | UnaryOp(un_op, e) -> TNoexpr, Void
+    | FunctionCall(name, actual_list) -> TNoexpr, Void
+    | Noexpr -> TNoexpr, Void in
 
 let check_variable_declaration (env: environment) (decl: variable_declaration) =
     let expr_details, t = check_expr env decl.declaration_initializer in
@@ -136,49 +136,50 @@ let check_variable_declaration (env: environment) (decl: variable_declaration) =
             List.find
             (fun (vdecl) -> vdecl.declaration_id = decl.declaration_id)
             env.symbol_table.variables in
-        raise (Error("Variable " ^ decl.declaration_id ^ " already declared in local scope"))
+        raise (Failure("Variable " ^ decl.declaration_id ^ " already declared in local scope"))
 
         (* If not found, add the declaration to the symbol table and return the new environment *)
         with Not_found ->
-            let new_symbol_table = {env.symbol_table with variables = decl::symbol_table.variables } in
+            let new_symbol_table = {env.symbol_table with variables = decl::env.symbol_table.variables } in
             let new_env =  { env with symbol_table = new_symbol_table }
             and s_var_decl = {
                 s_declaration_type = decl.declaration_type;
                 s_declaration_id = decl.declaration_id;
                 s_declaration_initializer = (expr_details, t) } in
             (new_env, s_var_decl))
-    else raise (Error(decl.declaration_id ^ ": Declaration type does not match expression")) in
+    else raise (Failure(decl.declaration_id ^ ": Declaration type does not match expression")) in
 
 let check_arg_declaration (env: environment) (decl: variable_declaration) =
     match decl.declaration_initializer with
         (* Todo: make sure channels have correct directions *)
         Noexpr -> check_variable_declaration env decl
-        | _ -> raise (Error("Error in argument declaration for " ^
+        | _ -> raise (Failure("Error in argument declaration for " ^
                             decl.declaration_id ^
                             ": Cannot have default values in function declaration.")) in
 
-let is_logical (expr: typed_expr) = match expr with
-      _, Int | _, Bool | _, Channel(t, dir) | _, Char | _, String -> true
-    | _ -> false
-
-let rec check_stmt (env: environment) (stmt: stmt) = match stmt with
-      Expr(e) -> (env, SExper(check_expr env e))
-    | Block(stmt_list) ->
+let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
+    match stmt with
+        Expr(e) -> (env, SExpr(check_expr env e))
+      | Block(stmt_list) ->
             let _, checked_stmts = check_stmt_list env stmt_list in
             (env, SBlock(checked_stmts))
-    | Return(e) ->
+      | Return(e) ->
             let expr_details, t = check_expr env e in
-            if t = env.return_type then (env, SReturn(check_expr env e))
-            else raise(Error("Expression does not match return_type"))
-    | Declaration(vdecl) -> check_variable_declaration env vdecl
-    | If(e, s1, s2) ->
+            (match env.return_type with
+                  Some(rtype) -> if t = rtype then (env, SReturn(check_expr env e))
+                                 else raise(Failure("Expression does not match return_type"))
+                | None -> raise(Failure("Return statement not in function")))
+      | Declaration(vdecl) ->
+            let new_env, vdecl = check_variable_declaration env vdecl in
+            (new_env, SDeclaration(vdecl))
+      | If(e, s1, s2) ->
             let checked_expr = check_expr env e
             and _, checked_stmt1 = check_stmt env s1
             and _, checked_stmt2 = check_stmt env s2 in
             if is_logical checked_expr then
                 (env, SIf(checked_expr, checked_stmt1, checked_stmt2))
-            else raise(Error("Invalid expression in \"if\" statement"))
-    | For(e1, e2, e3, s) ->
+            else raise(Failure("Invalid expression in \"if\" statement"))
+      | For(e1, e2, e3, s) ->
             let checked_expr1 = check_expr env e1
             and checked_expr2 = check_expr env e2
             and checked_expr3 = check_expr env e3
@@ -190,45 +191,45 @@ let rec check_stmt (env: environment) (stmt: stmt) = match stmt with
                              checked_expr2,
                              checked_expr3,
                              checked_stmt))
-            else raise(Error("Invalid expression in \"for\" statement"))
-    | While(e, s) ->
+            else raise(Failure("Invalid expression in \"for\" statement"))
+      | While(e, s) ->
             let checked_expr = check_expr env e
             and _, checked_stmt = check_stmt {env with in_loop = true} s in
             if is_logical checked_expr then
-                SWhile(checked_expr, checked_stmt)
-            else raise(Error("Invalid expression in \"while\" statement"))
-    | Continue ->
+                (env, SWhile(checked_expr, checked_stmt))
+            else raise(Failure("Invalid expression in \"while\" statement"))
+      | Continue ->
             if env.in_loop = true then (env, SContinue)
-            else raise(Error("Not in a loop")
-    | Break ->
+            else raise(Failure("Not in a loop"))
+      | Break ->
             if env.in_loop = true then (env, SBreak)
-            else raise(Error("Not in a loop")
-    | Poison(e) ->
-            let expr_details, t = check_expr e in
+            else raise(Failure("Not in a loop"))
+      | Poison(e) ->
+            let expr_details, t = check_expr env e in
             match t with
                   Channel(t, dir) -> (env, SPoison(expr_details, t))
-                | _ -> raise(Error("Attempting to poison a non-channel"))
+                | _ -> raise(Failure("Attempting to poison a non-channel"))
 
-and rec check_stmt_list (env: environment) (stmt_list: stmt list) =
+and check_stmt_list (env: environment) (stmt_list: stmt list) : (environment * s_stmt list) =
     let new_env, checked_stmts = List.fold_left
     (fun acc stmt ->
         let env', stmt_node = check_stmt (fst acc) stmt in
         (env', stmt_node::(snd acc)))
-    (env, []) fdecl.arguments in
-    (new_env, List.rev checked_stmts)
+    (env, []) stmt_list in
+    (new_env, List.rev checked_stmts) in
 
 let check_function_declaration (env: environment) (fdecl: function_declaration) =
     (* Get the types of the function's parameters *)
     let p_types = List.map (fun vdecl -> vdecl.declaration_type) fdecl.arguments in
 
     let f_entry = { name = fdecl.function_name;
-                    param_types: p_types;
-                    ret_type: flow_type;} in
+                    param_types =  p_types;
+                    ret_type = fdecl.return_type } in
 
     let new_funcs = f_entry::env.funcs in
 
     (* Make a new symbol table for the function scope *)
-    let new_symbol_table = { parent = env.symbol_table;
+    let new_symbol_table = { parent = Some(env.symbol_table);
                              variables = [] } in
 
     (* Add the function currently being checked to the environment. This is
@@ -261,29 +262,34 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
     (* Return the original environment, with the current function appended *)
     ({ env with funcs = new_funcs }, func_node) in
 
-let check_struct_declaration (env: environment) (decl: struct_declaration) =
-    "hello" in
+let check_struct_declaration (env: environment) (decl: struct_declaration) : (environment * s_struct_declaration) =
+    raise(Failure("Not implemented")) in
 
-let check_declaration (env: environment) (decl: s_declaration) -> (environment, s_declaration) =
+let check_declaration (env: environment) (decl: declaration) : (environment * s_declaration) =
     match decl with
-      VarDecl(vdecl) -> check_variable_declaration env vdecl
-    | FuncDecl(fdecl) -> check_function_declaration env fdecl
-    | StructDecl(sdecl) -> check_struct_declaration env sdecl
+      VarDecl(vdecl) ->
+          let new_env, checked_vdecl = check_variable_declaration env vdecl in
+          (new_env, SVarDecl(checked_vdecl))
+    | FuncDecl(fdecl) ->
+          let new_env, checked_fdecl = check_function_declaration env fdecl in
+          (new_env, SFuncDecl(checked_fdecl))
+    | StructDecl(sdecl) ->
+          let new_env, checked_sdecl = check_struct_declaration env sdecl in
+          (new_env, SStructDecl(checked_sdecl)) in
 
-let check_progam (prog: program) =
-    let env = {
-        return_type = None;
-        symbol_table = { parent : None; variables : []; };
-        funcs = [];
-        in_loop = false;
-    } in
+let env = {
+    return_type = None;
+    symbol_table = { parent = None; variables = []; };
+    funcs = [];
+    in_loop = false;
+} in
 
-    (* acc is the accumulator; it's a tuple of env, decl_list.
-     * the fold left builds the accumulator, threading the environment
-     * through the list of declarations. When the fold finishes, decl_list
-     * should be a built list of s_declarations *)
-    let _, decl_list = List.fold_left
-    (fun acc decl ->
-        let new_env, snode = check_declaration (fst acc) decl in
-        (new_env, snode::(snd acc)))
-    (env, []) program in decl_list
+(* acc is the accumulator; it's a tuple of env, decl_list.
+ * the fold left builds the accumulator, threading the environment
+ * through the list of declarations. When the fold finishes, decl_list
+ * should be a built list of s_declarations *)
+let _, decl_list = List.fold_left
+(fun acc decl ->
+    let new_env, snode = check_declaration (fst acc) decl in
+    (new_env, snode::(snd acc)))
+(env, []) prog in decl_list

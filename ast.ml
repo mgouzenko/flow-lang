@@ -38,9 +38,7 @@ and expr =
   | Id of string
   | BinOp of expr * bin_op * expr
   | UnaryOp of unary_op * expr
-  | Assign of string * expr
   | FunctionCall of string * expr list
-  | ProcessCall of string * expr list (* TEMPORARY, until we have symbol tables *)
   | Noexpr
 
 type variable_declaration = {
@@ -79,4 +77,4 @@ type declaration =
     | FuncDecl of function_declaration
     | StructDecl of struct_declaration
 
-type program = Declarations of declaration list
+type program = declaration list
