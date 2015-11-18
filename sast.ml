@@ -18,7 +18,6 @@ and expr_details =
   | TId of string
   | TBinOp of typed_expr * bin_op * typed_expr
   | TUnaryOp of unary_op * typed_expr
-  | TAssign of string * typed_expr
   | TFunctionCall of string * typed_expr list
   | TNoexpr
 

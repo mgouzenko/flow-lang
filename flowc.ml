@@ -20,7 +20,8 @@ let _ =
       let _ = close_out outfile in
       Sys.command ("dot -Tpng out.dot -o out.png"))
   | Sast -> ignore(
-      let _ = Sprinter.print_string_of_program program in
+      let sprogram = Semantic_analysis.check_progam program in
+      let _ = Sprinter.print_string_of_program sprogram in
       let graph = "digraph G{" ^ !Sprinter.dot_graph ^ "}" in
       let outfile = open_out "out.dot" in
       let _ = Printf.fprintf outfile "%s" graph in
