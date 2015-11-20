@@ -11,6 +11,7 @@ let _ =
       else (Compile, open_in Sys.argv.(1)) in
   let lexbuf = Lexing.from_channel file in
   let program = Parser.program Scanner.token lexbuf in
+  let sprogram = Semantic_analysis.check_progam program in
   match action with
   | Ast -> ignore(
       let _ = Printer.print_string_of_program program in
@@ -20,11 +21,10 @@ let _ =
       let _ = close_out outfile in
       Sys.command ("dot -Tpng out.dot -o out.png"))
   | Sast -> ignore(
-      let sprogram = Semantic_analysis.check_progam program in
       let _ = Sprinter.print_string_of_program sprogram in
       let graph = "digraph G{" ^ !Sprinter.dot_graph ^ "}" in
       let outfile = open_out "out.dot" in
       let _ = Printf.fprintf outfile "%s" graph in
       let _ = close_out outfile in
       Sys.command ("dot -Tpng out.dot -o out.png"))
-  | Compile ->  print_string (Compile.compile program)
+  | Compile ->  print_string (Compile.compile sprogram)
