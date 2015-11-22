@@ -18,7 +18,6 @@ and expr_details =
   | TId of string
   | TBinOp of typed_expr * bin_op * typed_expr
   | TUnaryOp of unary_op * typed_expr
-  | TAssign of string * typed_expr
   | TFunctionCall of string * typed_expr list
   | TNoexpr
 
@@ -60,4 +59,4 @@ type s_declaration =
     | SFuncDecl of s_function_declaration
     | SStructDecl of s_struct_declaration
 
-type s_ast = s_declaration list
+type s_program = s_declaration list

@@ -5,7 +5,7 @@ proc tokenGen(out int ochan, int token) {
 
 proc printer(in int chan) {
   while(^chan) {
-    printf("%d\n", @chan);
+    print_int_newline(@chan);
   }
 }
 
@@ -23,8 +23,8 @@ int main() {
   channel<int> chan3;
   int int1 = 1;
   int int2 = 2;
-  ~tokenGen(chan1, int1);
-  ~tokenGen(chan2, int2);
-  ~interleaver(chan1, chan2, chan3);
-  ~printer(chan3);
+  tokenGen(chan1, int1);
+  tokenGen(chan2, int2);
+  interleaver(chan1, chan2, chan3);
+  printer(chan3);
 }

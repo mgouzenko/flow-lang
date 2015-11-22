@@ -1,8 +1,9 @@
 open Ast;;
+open Sast;;
 
 let supported_channels = [Int;]
 
-let compile (program : program) =
+let compile (program : s_program) =
     let insert_boilerplate_header =
 "
  #include <assert.h>
@@ -120,10 +121,10 @@ void _wait_for_finish(){
 
 }\n"
     in
+
     (* Translate flow type to c type *)
     let rec translate_type (ftype: flow_type) = match ftype with
         Int -> "int"
-      | Float -> "float"
       | Double -> "double"
       | Bool -> "int"
       | Char -> "char"
@@ -139,8 +140,11 @@ void _wait_for_finish(){
       | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
-    let rec translate_expr (expr: expr) =
-        let translate_bin_op exp1 bin_op exp2 = 
+    let rec translate_expr (expr: typed_expr) =
+        let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
+          let exp1 = translate_expr typed_exp1
+          and exp2 = translate_expr typed_exp2
+          in  
           match bin_op with
             Plus -> exp1 ^ "+" ^ exp2
           | Minus -> exp1 ^ "-" ^ exp2
@@ -158,7 +162,9 @@ void _wait_for_finish(){
           | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
-        let translate_unary_op unary_op exp =
+        let translate_unary_op (unary_op : unary_op) (typed_exp : typed_expr) =
+          let exp = translate_expr typed_exp
+          in 
           match unary_op with
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
@@ -171,114 +177,124 @@ void _wait_for_finish(){
             true -> "1"
           | false -> "0"
         in
-        let rec expr_list_to_string expr_list =
+        let rec expr_list_to_string (expr_list : typed_expr list) =
           List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
              (translate_expr (List.hd expr_list)) (List.tl expr_list) 
         in
-        let translate_process_call id expr_list =
+        (* Translate flow type functions, including built-ins, to c function calls *)
+        let translate_function (id : string) (expr_list : typed_expr list) : string =
+            match id with
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
+        in
+        let translate_process_call (id : string) (expr_list : typed_expr list) =
           let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
           let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
           let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) &_args);\n" in 
           "{\n" ^ pthread_decl ^ args_struct ^ pthread_creation ^ "\n}"
         in
         match expr with
-          IntLiteral(i) -> string_of_int i
-        | StringLiteral(s) -> "\"" ^ s ^ "\""
-        | BoolLiteral(b) -> translate_bool b
-        | CharLiteral(c) -> "\'" ^ String.make 1 c ^ "\'"
-        | DoubleLiteral(d) -> string_of_float d
-        | Id(i) -> i
-        | BinOp(expr1, bin_op, expr2) -> 
-             translate_bin_op (translate_expr expr1) bin_op (translate_expr expr2)
-        | UnaryOp(unary_op, expr) -> 
-            translate_unary_op unary_op (translate_expr expr) 
-        | FunctionCall(id, expr_list) -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
-        | StructInitializer(dot_initializer_list) -> "TODO"
-        | ArrayInitializer(expr_list) -> "{" ^ expr_list_to_string expr_list ^ "}"
-        | ArrayElement(id, expr) -> id ^ "[" ^ translate_expr expr ^ "]"
-        | Noexpr -> ""
+          TIntLiteral(i), _ -> string_of_int i
+        | TStringLiteral(s), _ -> "\"" ^ s ^ "\""
+        | TBoolLiteral(b), _ -> translate_bool b
+        | TCharLiteral(c), _ -> "\'" ^ String.make 1 c ^ "\'"
+        | TDoubleLiteral(d), _ -> string_of_float d
+        | TId(i), _ -> i
+        | TBinOp(expr1, bin_op, expr2), _ -> 
+             translate_bin_op expr1 bin_op expr2
+        | TUnaryOp(unary_op, expr), _ -> 
+            translate_unary_op unary_op expr 
+        | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list  
+        | TFunctionCall(id, expr_list), _ -> translate_function id expr_list  
+        | TStructInitializer(dot_initializer_list), _ -> "TODO"
+        | TArrayInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
+        | TArrayElement(id, expr), _ -> id ^ "[" ^ translate_expr expr ^ "]"
+        | TNoexpr, _ -> ""
 
     in
 
     (* Translate flow variable declaration to c variable declaration *)
-    let translate_vdecl (vdecl : variable_declaration) =
-        let translated_type = translate_type vdecl.declaration_type in
+    let translate_vdecl (vdecl : s_variable_declaration) =
+        let translated_type = translate_type vdecl.s_declaration_type in
         translated_type ^ " " ^
-        vdecl.declaration_id ^
-        (match vdecl.declaration_type with
+        vdecl.s_declaration_id ^
+        (match vdecl.s_declaration_type with
             Channel(t, Nodir) -> ("= (" ^ translated_type ^
                                   ") malloc(sizeof(" ^ "struct _int_channel" ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
-                                  "_init_int_channel(" ^ vdecl.declaration_id ^ ")") (* AWFUL code TODO: must fix *)
-          | _ -> (match vdecl.declaration_initializer with
-                      Noexpr -> ""
-                    | _ -> "=" ^ (translate_expr vdecl.declaration_initializer))) in
+                                  "_init_int_channel(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
+          | _ -> (match vdecl.s_declaration_initializer with
+                      TNoexpr, _ -> ""
+                    | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
 
-    let rec translate_stmt indentation_level (stmt: stmt) =
+    let rec translate_stmt indentation_level (stmt: s_stmt) =
         let rec make_tabs num =
             if num = 0 then "" else ("\t" ^ make_tabs(num - 1)) in
         let cur_tabs = make_tabs indentation_level in
 
         cur_tabs ^
         (match stmt with
-            Expr(e) -> translate_expr e ^ ";\n"
-          | Block(stmt_list) ->
+            SExpr(e) -> translate_expr e ^ ";\n"
+          | SBlock(stmt_list) ->
                   "{\n" ^
                   String.concat "" (List.map (translate_stmt (indentation_level+1)) stmt_list) ^
                   cur_tabs ^ "}\n"
-          | Return(e) -> "return " ^ translate_expr e ^ ";"
-          | Declaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
-          | If(e1, s1, s2) ->
+          | SReturn(e) -> "return " ^ translate_expr e ^ ";"
+          | SDeclaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
+          | SIf(e1, s1, s2) ->
                   "if(" ^ translate_expr e1 ^ ")\n" ^
                   translate_stmt (indentation_level + 1) s1 ^ "\n" ^
                   cur_tabs ^ "else" ^ "\n" ^
                   translate_stmt (indentation_level + 1) s2
-          | For(e1, e2, e3, s) ->
+          | SFor(e1, e2, e3, s) ->
                   "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
                   ")\n" ^ translate_stmt (indentation_level) s
-          | While(e, s) ->
+          | SWhile(e, s) ->
                   "while(" ^ translate_expr e ^ ")" ^
                   translate_stmt (indentation_level + 1) s
-          | Continue -> "continue;"
-          | Break -> "break;"
-          | Poison(chan) -> "_poison(" ^ translate_expr chan ^ ");"
+          | SContinue -> "continue;"
+          | SBreak -> "break;"
+          | SPoison(chan) -> "_poison(" ^ translate_expr chan ^ ");"
         ) in
 
     (* unpacks the arguments to a process from void *_args *)
-    let unpack_process_args (process: function_declaration) =
+    let unpack_process_args (process: s_function_declaration) =
         "\n\t" ^
         (String.concat ";\n\t"
         (List.map (fun vdecl ->
             (translate_vdecl vdecl) ^ " = " ^
-            "((struct _" ^ process.function_name ^ "_args*) _args)->" ^
-            vdecl.declaration_id)
-        process.arguments)) ^
+            "((struct _" ^ process.s_function_name ^ "_args*) _args)->" ^
+            vdecl.s_declaration_id)
+        process.s_arguments)) ^
         ";\n" in
 
     (* Translate flow function declaration to c function declaration *)
-    let translate_fdecl (fdecl : function_declaration) =
-        let opening_stmts = if fdecl.function_name = "main" then "pthread_mutex_init(&_thread_list_lock, NULL);\n" else "" in
-        let closing_stmts = if fdecl.function_name = "main" then "_wait_for_finish();\n" else "" in
-        let arg_decl_string_list = (List.map translate_vdecl fdecl.arguments) in
-        (match fdecl.return_type with
-            Proc -> ("struct _" ^ fdecl.function_name ^ "_args{\n\t" ^
+    let translate_fdecl (fdecl : s_function_declaration) =
+        let opening_stmts = if fdecl.s_function_name = "main" then "pthread_mutex_init(&_thread_list_lock, NULL);\n" else "" in
+        let closing_stmts = if fdecl.s_function_name = "main" then "_wait_for_finish();\n" else "" in
+        let arg_decl_string_list = (List.map translate_vdecl fdecl.s_arguments) in
+        (match fdecl.s_return_type with
+            Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
                      String.concat ";\n\t" (List.rev arg_decl_string_list) ^ ";\n};\n")
           | _ -> "") ^
-        (translate_type fdecl.return_type) ^ " " ^
-        fdecl.function_name ^
-        (match fdecl.return_type with
+        (translate_type fdecl.s_return_type) ^ " " ^
+        fdecl.s_function_name ^
+        (match fdecl.s_return_type with
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
           | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^
-        String.concat "" (List.map (translate_stmt 1) fdecl.body) ^ closing_stmts ^ "\nreturn 0;}" (* WTF: TODO: return 0 should NOT be at the end of every function*)
+        String.concat "" (List.map (translate_stmt 1) fdecl.s_body) ^ closing_stmts ^ "\nreturn 0;}" (* WTF: TODO: return 0 should NOT be at the end of every function*)
 
     (* Tranlsate flow struct declaration to c struct declaration *)
-    and translate_struct_decl (sdecl: struct_declaration) = "Sdecl" in
+    and translate_struct_decl (sdecl: s_struct_declaration) = "Sdecl" in
 
     (* Translate the flow program to a c program *)
     insert_boilerplate_header ^
     String.concat "\n"
     (List.map (fun decl ->
         match decl with
-          VarDecl(vdecl) -> translate_vdecl vdecl
-        | FuncDecl(fdecl) -> translate_fdecl fdecl
-        | StructDecl(sdecl) -> translate_struct_decl sdecl)
+          SVarDecl(vdecl) -> translate_vdecl vdecl
+        | SFuncDecl(fdecl) -> translate_fdecl fdecl
+        | SStructDecl(sdecl) -> translate_struct_decl sdecl)
     program) ^ "\n"

@@ -9,7 +9,6 @@ type direction = In | Out | Nodir
 (* All of the primitive and nonprimitive types *)
 type flow_type =
       Int
-    | Float
     | Double
     | Bool
     | Char
