@@ -316,10 +316,14 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
           let new_env, checked_sdecl = check_struct_declaration env sdecl in
           (new_env, SStructDecl(checked_sdecl)) in
 
+let built_in_funcs = [
+    { name = "print"; param_types = [String; Int]; ret_type = Void; }]
+in
+
 let env = {
     return_type = None;
     symbol_table = { parent = None; variables = []; };
-    funcs = [];
+    funcs = built_in_funcs;
     in_loop = false;
 } in
 
