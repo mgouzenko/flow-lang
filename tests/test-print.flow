@@ -1,0 +1,8 @@
+int main () {
+  print_int(2*3+4);
+  print_string("\n");
+  print_string("hello");
+  int a = 3;
+  print_string("\n");
+  print_int(a);
+}
