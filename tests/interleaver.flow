@@ -16,7 +16,7 @@ proc tokenGen(out int ochan, <int>[5] tokens) {
 
 proc printer(in int chan) {
   while(chan) {
-    printf("%d", @chan);
+    print_string(@chan);
   }
 }
 

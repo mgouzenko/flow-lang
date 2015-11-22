@@ -34,7 +34,6 @@ rule token = parse
 | '%'           { MODULO }
 | '@'           { READ_CHANNEL }
 | '^'           { WAIT_FOR_MORE } (* Temporary *)
-| '~'			{ PROC_CALL } (* Temporary *)
 | "->"          { WRITE_CHANNEL }
 | "if"          { IF }
 | "else"        { ELSE }

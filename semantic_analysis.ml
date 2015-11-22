@@ -110,7 +110,7 @@ let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
   match op with 
     Retrieve -> 
       (match t with
-        Channel(t, dir) -> TUnaryOp(op, e), Channel(t, dir)
+        Channel(t, dir) -> TUnaryOp(op, e), t
         | _ -> raise (Invalid_argument(
             "operator " ^ string_of_unop op ^
             " not compatible with " ^ string_of_type t)))
@@ -127,7 +127,17 @@ let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
       | _ -> raise(Invalid_argument(
           "operator " ^ string_of_unop op ^
           " not compatible with " ^ string_of_type t)))
-    | Wait -> TNoexpr, Void (* Wait needs to be removed *) in
+    | Wait -> TNoexpr, Bool (* Wait needs to be removed *) in
+
+let string_of_type_list type_list =
+    List.fold_left (fun acc elm -> acc ^ ", " ^ (string_of_type elm))
+        (string_of_type (List.hd type_list)) (List.tl type_list)
+in
+
+let string_of_actual_list actual_list =
+    List.fold_left (fun acc elm -> acc ^ ", " ^ (string_of_type (snd elm)))
+        (string_of_type (snd (List.hd actual_list))) (List.tl actual_list)
+in
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
   let env_funcs = env.funcs in 
@@ -135,8 +145,15 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
       match efuncs with
         [] -> raise (Failure("Undeclared function " ^ name))
       | f_entry::tl -> if f_entry.name <> name then find_func tl else 
-          if f_entry.param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
-          raise (Failure("Incorrect paramater types for function call " ^ name)) else
+          let param_types = List.map
+            (fun p_type -> (match p_type with
+                Channel(ft, dir) -> Channel(ft, Nodir)
+              | _ -> p_type)) f_entry.param_types
+          in
+          if (List.rev param_types) <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
+          raise (Failure("Incorrect paramater types for function call " ^ name ^
+          ". param types: " ^ string_of_type_list f_entry.param_types ^ ". actual types: " ^
+          string_of_actual_list actual_list)) else
           TFunctionCall(name, actual_list), f_entry.ret_type  
     in find_func env_funcs  
 in
@@ -168,7 +185,7 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
 
 let check_variable_declaration (env: environment) (decl: variable_declaration) =
     let expr_details, t = check_expr env decl.declaration_initializer in
-    if t = decl.declaration_type then
+    if t = decl.declaration_type || t = Void then
         (try let _ =
             (* Try to find the a local variable of the same name. If found, it's an error. *)
             List.find

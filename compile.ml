@@ -184,10 +184,10 @@ void _wait_for_finish(){
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
             match id with
-            | "print_string" -> "printf('%s', " ^ expr_list_to_string expr_list ^ ")" 
-            | "print_string_newline" -> "printf('%s\n', "^ expr_list_to_string expr_list ^ ")"
-            | "print_int" -> "printf('%d', " ^ expr_list_to_string expr_list ^ ")" 
-            | "print_int_newline" -> "printf('%d\n', " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
@@ -207,6 +207,7 @@ void _wait_for_finish(){
              translate_bin_op expr1 bin_op expr2
         | TUnaryOp(unary_op, expr), _ -> 
             translate_unary_op unary_op expr 
+        | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list  
         | TFunctionCall(id, expr_list), _ -> translate_function id expr_list  
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
         | TArrayInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
