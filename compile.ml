@@ -121,10 +121,10 @@ void _wait_for_finish(){
 
 }\n"
     in
+
     (* Translate flow type to c type *)
     let rec translate_type (ftype: flow_type) = match ftype with
         Int -> "int"
-      | Float -> "float"
       | Double -> "double"
       | Bool -> "int"
       | Char -> "char"
@@ -181,6 +181,15 @@ void _wait_for_finish(){
           List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
              (translate_expr (List.hd expr_list)) (List.tl expr_list) 
         in
+        (* Translate flow type functions, including built-ins, to c function calls *)
+        let translate_function (id : string) (expr_list : typed_expr list) : string =
+            match id with
+            | "print_string" -> "printf('%s', " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_string_newline" -> "printf('%s\n', "^ expr_list_to_string expr_list ^ ")"
+            | "print_int" -> "printf('%d', " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_int_newline" -> "printf('%d\n', " ^ expr_list_to_string expr_list ^ ")" 
+            | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
+        in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
           let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
           let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
@@ -198,7 +207,7 @@ void _wait_for_finish(){
              translate_bin_op expr1 bin_op expr2
         | TUnaryOp(unary_op, expr), _ -> 
             translate_unary_op unary_op expr 
-        | TFunctionCall(id, expr_list), _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
+        | TFunctionCall(id, expr_list), _ -> translate_function id expr_list  
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
         | TArrayInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TArrayElement(id, expr), _ -> id ^ "[" ^ translate_expr expr ^ "]"

@@ -79,7 +79,6 @@ let rec print_string_of_expr = function
 
 let rec string_of_type = function
       Int ->  "int"
-    | Float -> "float"
     | Double -> "double"
     | Bool -> "bool"
     | Char -> "char"

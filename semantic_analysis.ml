@@ -64,7 +64,6 @@ let string_of_unop = function
 
 let rec string_of_type = function
       Int ->  "int"
-    | Float -> "float"
     | Double -> "double"
     | Bool -> "bool"
     | Char -> "char"
@@ -136,7 +135,7 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
       match efuncs with
         [] -> raise (Failure("Undeclared function " ^ name))
       | f_entry::tl -> if f_entry.name <> name then find_func tl else 
-         if f_entry.param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
+          if f_entry.param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
           raise (Failure("Incorrect paramater types for function call " ^ name)) else
           TFunctionCall(name, actual_list), f_entry.ret_type  
     in find_func env_funcs  
@@ -317,7 +316,10 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
           (new_env, SStructDecl(checked_sdecl)) in
 
 let built_in_funcs = [
-    { name = "print"; param_types = [String; Int]; ret_type = Void; }]
+    { name = "print_string"; param_types = [String]; ret_type = Void; };
+    { name = "print_int"; param_types = [Int]; ret_type = Void; };
+    { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
+    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; } ]
 in
 
 let env = {
