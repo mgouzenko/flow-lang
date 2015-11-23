@@ -229,6 +229,14 @@ void _wait_for_finish(){
                       TNoexpr, _ -> ""
                     | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
 
+    (* Check if channel is in a conditional *)
+    let eval_conditional_expr (typed_expr :typed_expr) =
+      let t = snd typed_expr in 
+      match t with
+        Channel(_,_) -> "_wait_for_more(" ^ translate_expr typed_expr ^ ")"
+      | _ ->  translate_expr typed_expr
+    in
+
     let rec translate_stmt indentation_level (stmt: s_stmt) =
         let rec make_tabs num =
             if num = 0 then "" else ("\t" ^ make_tabs(num - 1)) in
