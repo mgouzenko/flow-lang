@@ -140,9 +140,18 @@ void _wait_for_finish(){
       | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
+    (* And that && and || for channels use _wait_for_more *)
+    let check_wait_for_more exp t = 
+      match t with
+        Channel(_,_) -> "_wait_for_more(" ^ exp ^ ")"
+      | _ -> exp
+    in 
+
     let rec translate_expr (expr: typed_expr) =
         let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
-          let exp1 = translate_expr typed_exp1
+          let t1 = snd typed_exp1 
+          and t2 = snd typed_exp2 
+          and exp1 = translate_expr typed_exp1
           and exp2 = translate_expr typed_exp2
           in  
           match bin_op with
@@ -157,8 +166,8 @@ void _wait_for_finish(){
           | Gt -> exp1 ^ ">" ^ exp2
           | Leq -> exp1 ^ "<=" ^ exp2
           | Geq -> exp1 ^ ">=" ^ exp2
-          | And -> exp1 ^ "&&" ^ exp2
-          | Or -> exp1 ^ "||" ^ exp2
+          | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
+          | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
           | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
@@ -170,7 +179,6 @@ void _wait_for_finish(){
           | Negate -> "-" ^ exp
            (* TODO: In semantic analysis we need to check type to dequeue *)
           | Retrieve -> "_dequeue_int(" ^ exp ^ ")"
-          | Wait -> "_wait_for_more(" ^ exp ^ ")"
         in
         let translate_bool b = 
           match b with
@@ -252,7 +260,7 @@ void _wait_for_finish(){
           | SReturn(e) -> "return " ^ translate_expr e ^ ";"
           | SDeclaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
           | SIf(e1, s1, s2) ->
-                  "if(" ^ translate_expr e1 ^ ")\n" ^
+                  "if(" ^ eval_conditional_expr e1 ^ ")\n" ^
                   translate_stmt (indentation_level + 1) s1 ^ "\n" ^
                   cur_tabs ^ "else" ^ "\n" ^
                   translate_stmt (indentation_level + 1) s2
@@ -260,7 +268,7 @@ void _wait_for_finish(){
                   "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
                   ")\n" ^ translate_stmt (indentation_level) s
           | SWhile(e, s) ->
-                  "while(" ^ translate_expr e ^ ")" ^
+                  "while(" ^ eval_conditional_expr e ^ ")" ^
                   translate_stmt (indentation_level + 1) s
           | SContinue -> "continue;"
           | SBreak -> "break;"

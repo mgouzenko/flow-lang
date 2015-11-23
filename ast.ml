@@ -3,7 +3,7 @@ type bin_op =
       | Neq  | Lt    | Leq   | Gt     | Geq    | Eq
       | Send | And   | Or    | Assign
 
-type unary_op = Retrieve | Negate | Not | (* TEMPORARY, until we have symbol tables *) Wait
+type unary_op = Retrieve | Negate | Not
 type direction = In | Out | Nodir
 
 (* All of the primitive and nonprimitive types *)
