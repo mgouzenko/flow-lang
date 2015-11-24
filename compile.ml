@@ -327,6 +327,14 @@ void _wait_for_finish(){
 
     in
 
+    (* Get the type of the channel *)
+    let get_channel_type (chan: flow_type) = 
+      match chan with 
+        Channel(Int, _) -> "_int_channel"
+      | Channel(Char, _) -> "_char_channel"
+      | _ -> ""
+    in
+
     (* Translate flow variable declaration to c variable declaration *)
     let translate_vdecl (vdecl : s_variable_declaration) =
         let translated_type = translate_type vdecl.s_declaration_type in
@@ -334,8 +342,8 @@ void _wait_for_finish(){
         vdecl.s_declaration_id ^
         (match vdecl.s_declaration_type with
             Channel(t, Nodir) -> ("= (" ^ translated_type ^
-                                  ") malloc(sizeof(" ^ "struct _int_channel" ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
-                                  "_init_int_channel(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
+                                  ") malloc(sizeof(" ^ "struct " ^ (get_channel_type vdecl.s_declaration_type) ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
+                                  "_init" ^ (get_channel_type vdecl.s_declaration_type) ^ "(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
           | _ -> (match vdecl.s_declaration_initializer with
                       TNoexpr, _ -> ""
                     | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
