@@ -335,9 +335,10 @@ void _wait_for_finish(){
     let eval_poison_type (typed_expr : typed_expr) = 
       let t = snd typed_expr in
       match t with 
-        Int -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
-      | Char -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
-      | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
+        Channel(Int,_) -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
+      | Channel(Char,_) -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
+      | Channel(_,_) -> "" (* TODO Needs to be populated with other channel types *)
+      | _ -> translate_expr typed_expr
     in
 
     let rec translate_stmt indentation_level (stmt: s_stmt) =

@@ -260,7 +260,7 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
       | Poison(e) ->
             let expr_details, t = check_expr env e in
             match t with
-                  Channel(t, dir) -> (env, SPoison(expr_details, t))
+                  Channel(t, dir) -> (env, SPoison(expr_details, Channel(t, dir)))
                 | _ -> raise(Failure("Attempting to poison a non-channel"))
 
 and check_stmt_list (env: environment) (stmt_list: stmt list) : (environment * s_stmt list) =
