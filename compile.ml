@@ -232,6 +232,16 @@ void _wait_for_finish(){
     in 
 
     let rec translate_expr (expr: typed_expr) =
+
+        (* Ensure the correct type is enqueued on channel *)
+        let enqueue_channel (typed_expr1: typed_expr) (typed_expr2 : typed_expr) =
+          let t = snd typed_expr2 in
+          match t with 
+            Channel(Int, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
+          | Channel(Char, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
+          |  _ -> "" (* TODO Needs to be populated with other channel types *)
+        in
+
         let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
           let t1 = snd typed_exp1 
           and t2 = snd typed_exp2 
@@ -252,7 +262,7 @@ void _wait_for_finish(){
           | Geq -> exp1 ^ ">=" ^ exp2
           | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
           | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
-          | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+          | Send -> enqueue_channel typed_exp1 typed_exp2
           | Assign -> exp1 ^ "=" ^ exp2
         in
 
