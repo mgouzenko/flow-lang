@@ -260,7 +260,7 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
       | Poison(e) ->
             let expr_details, t = check_expr env e in
             match t with
-                  Channel(t, dir) -> (env, SPoison(expr_details, t))
+                  Channel(t, dir) -> (env, SPoison(expr_details, Channel(t, dir)))
                 | _ -> raise(Failure("Attempting to poison a non-channel"))
 
 and check_stmt_list (env: environment) (stmt_list: stmt list) : (environment * s_stmt list) =
@@ -333,8 +333,10 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
 let built_in_funcs = [
     { name = "print_string"; param_types = [String]; ret_type = Void; };
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char"; param_types = [Char]; ret_type = Void; };
     { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
-    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; } ]
+    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; } ]
 in
 
 let env = {

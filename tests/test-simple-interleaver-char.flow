@@ -1,0 +1,30 @@
+proc tokenGen(out char ochan, char token) {
+  token -> ochan;
+  poison ochan;
+}
+
+proc printer(in char chan) {
+  while(chan) {
+    print_char_newline(@chan);
+  }
+}
+
+proc interleaver(in char chan1, in char chan2, out char ochan) {
+  while(chan1 || chan2){
+    if(chan1) {@chan1 -> ochan;}
+    if(chan2) {@chan2 -> ochan;}
+  }
+  poison ochan;
+}
+
+int main() {
+  channel<char> chan1;
+  channel<char> chan2;
+  channel<char> chan3;
+  char char1 = 'a';
+  char char2 = 'b';
+  tokenGen(chan1, char1);
+  tokenGen(chan2, char2);
+  interleaver(chan1, chan2, chan3);
+  printer(chan3);
+}

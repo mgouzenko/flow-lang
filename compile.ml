@@ -1,7 +1,7 @@
 open Ast;;
 open Sast;;
 
-let supported_channels = [Int;]
+let supported_channels = [Int; Char;]
 
 let compile (program : s_program) =
     let insert_boilerplate_header =
@@ -24,6 +24,19 @@ struct _int_channel{
   pthread_cond_t read_ready;
 };
 
+
+struct _char_channel{
+    char queue[100];
+    int front;
+    int back;     // One past the last element
+    int MAX_SIZE;
+    int size;
+    bool poisoned;
+    pthread_mutex_t lock;
+    pthread_cond_t write_ready;
+    pthread_cond_t read_ready;
+};
+
 int _init_int_channel(struct _int_channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
       printf(\"Mutex init failed\");
@@ -42,7 +55,41 @@ int _init_int_channel(struct _int_channel *channel){
   return 0;
 }
 
+int _init_char_channel(struct _char_channel *channel){
+    if(pthread_mutex_init(&channel->lock, NULL) != 0){
+        printf(\"Mutex init failed\");
+        return 1;
+    }
+
+    if(pthread_cond_init(&channel->write_ready, NULL) +
+            pthread_cond_init(&channel->read_ready, NULL ) != 0){
+        printf(\"Cond init failed\");
+        return 1;
+    }
+    channel->MAX_SIZE = 100;
+    channel->front = 0;
+    channel->back = 0;
+    channel->poisoned = false;
+    return 0;
+}
+
 void _enqueue_int(int element, struct _int_channel *channel){
+    pthread_mutex_lock(&channel->lock);
+    while(channel->size >= channel->MAX_SIZE)
+        pthread_cond_wait(&channel->write_ready, &channel->lock);
+
+    assert(channel->size < channel->MAX_SIZE);
+    assert(!(channel->poisoned));
+
+    channel->queue[channel->back] = element;
+    channel->back = (channel->back + 1) % channel->MAX_SIZE;
+
+    channel->size++;
+    pthread_cond_signal(&channel->read_ready);
+    pthread_mutex_unlock(&channel->lock);
+}
+
+void _enqueue_char(char element, struct _char_channel *channel){
     pthread_mutex_lock(&channel->lock);
     while(channel->size >= channel->MAX_SIZE)
         pthread_cond_wait(&channel->write_ready, &channel->lock);
@@ -71,14 +118,34 @@ int _dequeue_int(struct _int_channel *channel){
     return result;
 }
 
-void _poison(struct _int_channel *channel) {
+char _dequeue_char(struct _char_channel *channel){
+    pthread_mutex_lock(&channel->lock);
+    assert(channel->size != 0);
+
+    char result = channel->queue[channel->front];
+    channel->front = (channel->front + 1) % channel->MAX_SIZE;
+
+    channel->size--;
+    pthread_cond_signal(&channel->write_ready);
+    pthread_mutex_unlock(&channel->lock);
+    return result;
+}
+
+void _poison_int(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     channel->poisoned = true;
     pthread_cond_signal(&channel->read_ready);
     pthread_mutex_unlock(&channel->lock);
 }
 
-bool _wait_for_more(struct _int_channel *channel) {
+void _poison_char(struct _char_channel *channel) {
+    pthread_mutex_lock(&channel->lock);
+    channel->poisoned = true;
+    pthread_cond_signal(&channel->read_ready);
+    pthread_mutex_unlock(&channel->lock);
+}
+
+bool _wait_for_more_int(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     while(channel->size == 0) {
         if(channel->poisoned){
@@ -92,6 +159,21 @@ bool _wait_for_more(struct _int_channel *channel) {
     pthread_mutex_unlock(&channel->lock);
     return true;
 
+}
+
+bool _wait_for_more_char(struct _char_channel *channel) {
+    pthread_mutex_lock(&channel->lock);
+    while(channel->size == 0) {
+        if(channel->poisoned){
+            pthread_mutex_unlock(&channel->lock);
+            return false;
+        }
+        else {
+            pthread_cond_wait(&channel->read_ready, &channel->lock);
+        }
+    }
+    pthread_mutex_unlock(&channel->lock);
+    return true;
 }
 
 struct _pthread_node{
@@ -140,14 +222,26 @@ void _wait_for_finish(){
       | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
-    (* And that && and || for channels use _wait_for_more *)
+    (* Check that && and || for channels use _wait_for_more *)
     let check_wait_for_more exp t = 
       match t with
-        Channel(_,_) -> "_wait_for_more(" ^ exp ^ ")"
+        Channel(Int,_) -> "_wait_for_more_int(" ^ exp ^ ")"
+      | Channel(Char,_) ->  "_wait_for_more_char(" ^ exp ^ ")"
+      | Channel(_, _) -> "" (* TODO Needs to be populated with other channel types *)
       | _ -> exp
     in 
 
     let rec translate_expr (expr: typed_expr) =
+
+        (* Ensure the correct type is enqueued on channel *)
+        let enqueue_channel (typed_expr1: typed_expr) (typed_expr2 : typed_expr) =
+          let t = snd typed_expr2 in
+          match t with 
+            Channel(Int, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
+          | Channel(Char, _) -> "_enqueue_char(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
+          |  _ -> "" (* TODO Needs to be populated with other channel types *)
+        in
+
         let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
           let t1 = snd typed_exp1 
           and t2 = snd typed_exp2 
@@ -168,17 +262,26 @@ void _wait_for_finish(){
           | Geq -> exp1 ^ ">=" ^ exp2
           | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
           | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
-          | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+          | Send -> enqueue_channel typed_exp1 typed_exp2
           | Assign -> exp1 ^ "=" ^ exp2
         in
-        let translate_unary_op (unary_op : unary_op) (typed_exp : typed_expr) =
-          let exp = translate_expr typed_exp
+
+        (* Ensure the correct type is dequed from channel *)
+        let dequeue_channel (typed_expr: typed_expr) =
+          let t = snd typed_expr in
+          match t with 
+            Channel(Int, _) -> "_dequeue_int(" ^ translate_expr typed_expr ^ ")"
+          | Channel(Char, _) -> "_dequeue_char(" ^ translate_expr typed_expr ^ ")" 
+          |  _ -> "" (* TODO Needs to be populated with other channel types *)
+        in
+
+        let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
+          let exp = translate_expr typed_expr
           in 
           match unary_op with
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
-           (* TODO: In semantic analysis we need to check type to dequeue *)
-          | Retrieve -> "_dequeue_int(" ^ exp ^ ")"
+          | Retrieve -> dequeue_channel typed_expr
         in
         let translate_bool b = 
           match b with
@@ -196,6 +299,8 @@ void _wait_for_finish(){
             | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
             | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char_newline" -> "printf(\"%c\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
@@ -224,6 +329,14 @@ void _wait_for_finish(){
 
     in
 
+    (* Get the type of the channel *)
+    let get_channel_type (chan: flow_type) = 
+      match chan with 
+        Channel(Int, _) -> "_int_channel"
+      | Channel(Char, _) -> "_char_channel"
+      | _ -> ""
+    in
+
     (* Translate flow variable declaration to c variable declaration *)
     let translate_vdecl (vdecl : s_variable_declaration) =
         let translated_type = translate_type vdecl.s_declaration_type in
@@ -231,8 +344,8 @@ void _wait_for_finish(){
         vdecl.s_declaration_id ^
         (match vdecl.s_declaration_type with
             Channel(t, Nodir) -> ("= (" ^ translated_type ^
-                                  ") malloc(sizeof(" ^ "struct _int_channel" ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
-                                  "_init_int_channel(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
+                                  ") malloc(sizeof(" ^ "struct " ^ (get_channel_type vdecl.s_declaration_type) ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
+                                  "_init" ^ (get_channel_type vdecl.s_declaration_type) ^ "(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
           | _ -> (match vdecl.s_declaration_initializer with
                       TNoexpr, _ -> ""
                     | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
@@ -241,8 +354,18 @@ void _wait_for_finish(){
     let eval_conditional_expr (typed_expr :typed_expr) =
       let t = snd typed_expr in 
       match t with
-        Channel(_,_) -> "_wait_for_more(" ^ translate_expr typed_expr ^ ")"
-      | _ ->  translate_expr typed_expr
+        Channel(Int,_) -> "_wait_for_more_int(" ^ translate_expr typed_expr ^ ")"
+      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"   
+      | _ ->  translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
+    in
+
+    (* Check the type of the poison token *)
+    let eval_poison_type (typed_expr : typed_expr) = 
+      let t = snd typed_expr in
+      match t with 
+        Channel(Int,_) -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
+      | Channel(Char,_) -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
+      | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
     let rec translate_stmt indentation_level (stmt: s_stmt) =
@@ -272,7 +395,7 @@ void _wait_for_finish(){
                   translate_stmt (indentation_level + 1) s
           | SContinue -> "continue;"
           | SBreak -> "break;"
-          | SPoison(chan) -> "_poison(" ^ translate_expr chan ^ ");"
+          | SPoison(e) -> eval_poison_type e
         ) in
 
     (* unpacks the arguments to a process from void *_args *)
