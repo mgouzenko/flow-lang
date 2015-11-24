@@ -24,6 +24,19 @@ struct _int_channel{
   pthread_cond_t read_ready;
 };
 
+
+struct _char_channel{
+    char queue[100];
+    int front;
+    int back;     // One past the last element
+    int MAX_SIZE;
+    int size;
+    bool poisoned;
+    pthread_mutex_t lock;
+    pthread_cond_t write_ready;
+    pthread_cond_t read_ready;
+};
+
 int _init_int_channel(struct _int_channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
       printf(\"Mutex init failed\");
@@ -42,7 +55,41 @@ int _init_int_channel(struct _int_channel *channel){
   return 0;
 }
 
+int _init_char_channel(struct _char_channel *channel){
+    if(pthread_mutex_init(&channel->lock, NULL) != 0){
+        printf(\"Mutex init failed\");
+        return 1;
+    }
+
+    if(pthread_cond_init(&channel->write_ready, NULL) +
+            pthread_cond_init(&channel->read_ready, NULL ) != 0){
+        printf(\"Cond init failed\");
+        return 1;
+    }
+    channel->MAX_SIZE = 100;
+    channel->front = 0;
+    channel->back = 0;
+    channel->poisoned = false;
+    return 0;
+}
+
 void _enqueue_int(int element, struct _int_channel *channel){
+    pthread_mutex_lock(&channel->lock);
+    while(channel->size >= channel->MAX_SIZE)
+        pthread_cond_wait(&channel->write_ready, &channel->lock);
+
+    assert(channel->size < channel->MAX_SIZE);
+    assert(!(channel->poisoned));
+
+    channel->queue[channel->back] = element;
+    channel->back = (channel->back + 1) % channel->MAX_SIZE;
+
+    channel->size++;
+    pthread_cond_signal(&channel->read_ready);
+    pthread_mutex_unlock(&channel->lock);
+}
+
+void _enqueue_char(char element, struct _char_channel *channel){
     pthread_mutex_lock(&channel->lock);
     while(channel->size >= channel->MAX_SIZE)
         pthread_cond_wait(&channel->write_ready, &channel->lock);
@@ -71,14 +118,34 @@ int _dequeue_int(struct _int_channel *channel){
     return result;
 }
 
-void _poison(struct _int_channel *channel) {
+char _dequeue_char(struct _char_channel *channel){
+    pthread_mutex_lock(&channel->lock);
+    assert(channel->size != 0);
+
+    char result = channel->queue[channel->front];
+    channel->front = (channel->front + 1) % channel->MAX_SIZE;
+
+    channel->size--;
+    pthread_cond_signal(&channel->write_ready);
+    pthread_mutex_unlock(&channel->lock);
+    return result;
+}
+
+void _poison_int(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     channel->poisoned = true;
     pthread_cond_signal(&channel->read_ready);
     pthread_mutex_unlock(&channel->lock);
 }
 
-bool _wait_for_more(struct _int_channel *channel) {
+void _poison_char(struct _char_channel *channel) {
+    pthread_mutex_lock(&channel->lock);
+    channel->poisoned = true;
+    pthread_cond_signal(&channel->read_ready);
+    pthread_mutex_unlock(&channel->lock);
+}
+
+bool _wait_for_more_int(struct _int_channel *channel) {
     pthread_mutex_lock(&channel->lock);
     while(channel->size == 0) {
         if(channel->poisoned){
@@ -92,6 +159,21 @@ bool _wait_for_more(struct _int_channel *channel) {
     pthread_mutex_unlock(&channel->lock);
     return true;
 
+}
+
+bool _wait_for_more_char(struct _char_channel *channel) {
+    pthread_mutex_lock(&channel->lock);
+    while(channel->size == 0) {
+        if(channel->poisoned){
+            pthread_mutex_unlock(&channel->lock);
+            return false;
+        }
+        else {
+            pthread_cond_wait(&channel->read_ready, &channel->lock);
+        }
+    }
+    pthread_mutex_unlock(&channel->lock);
+    return true;
 }
 
 struct _pthread_node{
@@ -143,7 +225,9 @@ void _wait_for_finish(){
     (* And that && and || for channels use _wait_for_more *)
     let check_wait_for_more exp t = 
       match t with
-        Channel(_,_) -> "_wait_for_more(" ^ exp ^ ")"
+        Channel(Int,_) -> "_wait_for_more_int(" ^ exp ^ ")"
+      | Channel(Char,_) ->  "_wait_for_more_char(" ^ exp ^ ")"
+      | Channel(_, _) -> "" (* TODO Needs to be populated with other channel types *)
       | _ -> exp
     in 
 
@@ -241,8 +325,19 @@ void _wait_for_finish(){
     let eval_conditional_expr (typed_expr :typed_expr) =
       let t = snd typed_expr in 
       match t with
-        Channel(_,_) -> "_wait_for_more(" ^ translate_expr typed_expr ^ ")"
+        Channel(Int,_) -> "_wait_for_more_int(" ^ translate_expr typed_expr ^ ")"
+      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"  
+      | Channel(_,_) -> "" (* TODO Needs to be populated with other channel types *)
       | _ ->  translate_expr typed_expr
+    in
+
+    (* Check the type of the poison token *)
+    let eval_poison_type (typed_expr : typed_expr) = 
+      let t = snd typed_expr in
+      match t with 
+        Int -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
+      | Char -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
+      | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
     let rec translate_stmt indentation_level (stmt: s_stmt) =
@@ -272,7 +367,7 @@ void _wait_for_finish(){
                   translate_stmt (indentation_level + 1) s
           | SContinue -> "continue;"
           | SBreak -> "break;"
-          | SPoison(chan) -> "_poison(" ^ translate_expr chan ^ ");"
+          | SPoison(e) -> eval_poison_type e
         ) in
 
     (* unpacks the arguments to a process from void *_args *)
