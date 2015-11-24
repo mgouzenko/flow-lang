@@ -333,8 +333,10 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
 let built_in_funcs = [
     { name = "print_string"; param_types = [String]; ret_type = Void; };
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char"; param_types = [Char]; ret_type = Void; };
     { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
-    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; } ]
+    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; } ]
 in
 
 let env = {

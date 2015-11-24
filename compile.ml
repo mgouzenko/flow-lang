@@ -1,7 +1,7 @@
 open Ast;;
 open Sast;;
 
-let supported_channels = [Int;]
+let supported_channels = [Int; Char;]
 
 let compile (program : s_program) =
     let insert_boilerplate_header =
@@ -238,7 +238,7 @@ void _wait_for_finish(){
           let t = snd typed_expr2 in
           match t with 
             Channel(Int, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
-          | Channel(Char, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
+          | Channel(Char, _) -> "_enqueue_char(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
           |  _ -> "" (* TODO Needs to be populated with other channel types *)
         in
 
@@ -299,6 +299,8 @@ void _wait_for_finish(){
             | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
             | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char_newline" -> "printf(\"%c\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
