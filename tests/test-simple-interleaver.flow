@@ -4,15 +4,15 @@ proc tokenGen(out int ochan, int token) {
 }
 
 proc printer(in int chan) {
-  while(^chan) {
+  while(chan) {
     print_int_newline(@chan);
   }
 }
 
 proc interleaver(in int chan1, in int chan2, out int ochan) {
-  while(^chan1 || ^chan2){
-    if(^chan1) {@chan1 -> ochan;}
-    if(^chan2) {@chan2 -> ochan;}
+  while(chan1 || chan2){
+    if(chan1) {@chan1 -> ochan;}
+    if(chan2) {@chan2 -> ochan;}
   }
   poison ochan;
 }

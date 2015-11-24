@@ -140,9 +140,18 @@ void _wait_for_finish(){
       | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
+    (* And that && and || for channels use _wait_for_more *)
+    let check_wait_for_more exp t = 
+      match t with
+        Channel(_,_) -> "_wait_for_more(" ^ exp ^ ")"
+      | _ -> exp
+    in 
+
     let rec translate_expr (expr: typed_expr) =
         let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
-          let exp1 = translate_expr typed_exp1
+          let t1 = snd typed_exp1 
+          and t2 = snd typed_exp2 
+          and exp1 = translate_expr typed_exp1
           and exp2 = translate_expr typed_exp2
           in  
           match bin_op with
@@ -157,8 +166,8 @@ void _wait_for_finish(){
           | Gt -> exp1 ^ ">" ^ exp2
           | Leq -> exp1 ^ "<=" ^ exp2
           | Geq -> exp1 ^ ">=" ^ exp2
-          | And -> exp1 ^ "&&" ^ exp2
-          | Or -> exp1 ^ "||" ^ exp2
+          | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
+          | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
           | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
@@ -170,7 +179,6 @@ void _wait_for_finish(){
           | Negate -> "-" ^ exp
            (* TODO: In semantic analysis we need to check type to dequeue *)
           | Retrieve -> "_dequeue_int(" ^ exp ^ ")"
-          | Wait -> "_wait_for_more(" ^ exp ^ ")"
         in
         let translate_bool b = 
           match b with
@@ -192,7 +200,7 @@ void _wait_for_finish(){
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
           let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
-          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
+          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string (List.rev expr_list) ^ "\n};\n" in
           let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) &_args);\n" in 
           "{\n" ^ pthread_decl ^ args_struct ^ pthread_creation ^ "\n}"
         in
@@ -229,6 +237,14 @@ void _wait_for_finish(){
                       TNoexpr, _ -> ""
                     | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
 
+    (* Check if channel is in a conditional *)
+    let eval_conditional_expr (typed_expr :typed_expr) =
+      let t = snd typed_expr in 
+      match t with
+        Channel(_,_) -> "_wait_for_more(" ^ translate_expr typed_expr ^ ")"
+      | _ ->  translate_expr typed_expr
+    in
+
     let rec translate_stmt indentation_level (stmt: s_stmt) =
         let rec make_tabs num =
             if num = 0 then "" else ("\t" ^ make_tabs(num - 1)) in
@@ -244,7 +260,7 @@ void _wait_for_finish(){
           | SReturn(e) -> "return " ^ translate_expr e ^ ";"
           | SDeclaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
           | SIf(e1, s1, s2) ->
-                  "if(" ^ translate_expr e1 ^ ")\n" ^
+                  "if(" ^ eval_conditional_expr e1 ^ ")\n" ^
                   translate_stmt (indentation_level + 1) s1 ^ "\n" ^
                   cur_tabs ^ "else" ^ "\n" ^
                   translate_stmt (indentation_level + 1) s2
@@ -252,7 +268,7 @@ void _wait_for_finish(){
                   "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
                   ")\n" ^ translate_stmt (indentation_level) s
           | SWhile(e, s) ->
-                  "while(" ^ translate_expr e ^ ")" ^
+                  "while(" ^ eval_conditional_expr e ^ ")" ^
                   translate_stmt (indentation_level + 1) s
           | SContinue -> "continue;"
           | SBreak -> "break;"
@@ -297,4 +313,4 @@ void _wait_for_finish(){
           SVarDecl(vdecl) -> translate_vdecl vdecl
         | SFuncDecl(fdecl) -> translate_fdecl fdecl
         | SStructDecl(sdecl) -> translate_struct_decl sdecl)
-    program) ^ "\n"
+    (List.rev program)) ^ "\n"

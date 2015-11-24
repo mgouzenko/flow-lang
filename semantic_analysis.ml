@@ -59,8 +59,7 @@ let string_of_binop = function
 let string_of_unop = function
     | Retrieve -> "@"
     | Negate -> "-"
-    | Not -> "!"
-    | Wait -> "^" in
+    | Not -> "!" in
 
 let rec string_of_type = function
       Int ->  "int"
@@ -126,8 +125,7 @@ let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
         Bool -> TUnaryOp(op, e), Bool
       | _ -> raise(Invalid_argument(
           "operator " ^ string_of_unop op ^
-          " not compatible with " ^ string_of_type t)))
-    | Wait -> TNoexpr, Bool (* Wait needs to be removed *) in
+          " not compatible with " ^ string_of_type t))) in
 
 let string_of_type_list type_list =
     List.fold_left (fun acc elm -> acc ^ ", " ^ (string_of_type elm))
