@@ -222,7 +222,7 @@ void _wait_for_finish(){
       | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
       | List(t) -> "wtf?" in
 
-    (* And that && and || for channels use _wait_for_more *)
+    (* Check that && and || for channels use _wait_for_more *)
     let check_wait_for_more exp t = 
       match t with
         Channel(Int,_) -> "_wait_for_more_int(" ^ exp ^ ")"
@@ -255,14 +255,23 @@ void _wait_for_finish(){
           | Send -> "_enqueue_int(" ^ exp1 ^ ", " ^ exp2 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
         in
-        let translate_unary_op (unary_op : unary_op) (typed_exp : typed_expr) =
-          let exp = translate_expr typed_exp
+
+        (* Ensure the correct type is dequed from channel *)
+        let dequeue_channel (typed_expr: typed_expr) =
+          let t = snd typed_expr in
+          match t with 
+            Channel(Int, _) -> "_dequeue_int(" ^ translate_expr typed_expr ^ ")"
+          | Channel(Char, _) -> "_dequeue_char(" ^ translate_expr typed_expr ^ ")" 
+          |  _ -> "" (* TODO Needs to be populated with other channel types *)
+        in
+
+        let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
+          let exp = translate_expr typed_expr
           in 
           match unary_op with
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
-           (* TODO: In semantic analysis we need to check type to dequeue *)
-          | Retrieve -> "_dequeue_int(" ^ exp ^ ")"
+          | Retrieve -> dequeue_channel typed_expr
         in
         let translate_bool b = 
           match b with
@@ -326,9 +335,8 @@ void _wait_for_finish(){
       let t = snd typed_expr in 
       match t with
         Channel(Int,_) -> "_wait_for_more_int(" ^ translate_expr typed_expr ^ ")"
-      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"  
-      | Channel(_,_) -> "" (* TODO Needs to be populated with other channel types *)
-      | _ ->  translate_expr typed_expr
+      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"   
+      | _ ->  translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
     (* Check the type of the poison token *)
@@ -337,8 +345,7 @@ void _wait_for_finish(){
       match t with 
         Channel(Int,_) -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
       | Channel(Char,_) -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
-      | Channel(_,_) -> "" (* TODO Needs to be populated with other channel types *)
-      | _ -> translate_expr typed_expr
+      | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
     let rec translate_stmt indentation_level (stmt: s_stmt) =
