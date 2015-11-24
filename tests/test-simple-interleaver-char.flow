@@ -1,5 +1,8 @@
 proc tokenGen(out char ochan, char token) {
-  token -> ochan;
+  int i = 0;
+  for (i; i < 3; i=i+1) {
+    token -> ochan;
+  }
   poison ochan;
 }
 
