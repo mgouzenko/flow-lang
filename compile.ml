@@ -200,7 +200,7 @@ void _wait_for_finish(){
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
           let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
-          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
+          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string (List.rev expr_list) ^ "\n};\n" in
           let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) &_args);\n" in 
           "{\n" ^ pthread_decl ^ args_struct ^ pthread_creation ^ "\n}"
         in
@@ -313,4 +313,4 @@ void _wait_for_finish(){
           SVarDecl(vdecl) -> translate_vdecl vdecl
         | SFuncDecl(fdecl) -> translate_fdecl fdecl
         | SStructDecl(sdecl) -> translate_struct_decl sdecl)
-    program) ^ "\n"
+    (List.rev program)) ^ "\n"
