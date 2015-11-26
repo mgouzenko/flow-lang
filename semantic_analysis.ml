@@ -103,25 +103,25 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                     | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
                     | _ -> raise (Invalid_argument("Invalid write to channel")) in
 
-let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr = 
+let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
   let expr_details, t = e
   in
-  match op with 
-    Retrieve -> 
+  match op with
+    Retrieve ->
       (match t with
         Channel(t, dir) -> TUnaryOp(op, e), t
         | _ -> raise (Invalid_argument(
             "operator " ^ string_of_unop op ^
             " not compatible with " ^ string_of_type t)))
-    | Negate -> 
-      (match t with 
+    | Negate ->
+      (match t with
         Int -> TUnaryOp(op, e), Int
       | Double -> TUnaryOp(op, e), Double
       | _ -> raise (Invalid_argument(
           "operator " ^ string_of_unop op ^
           " not compatible with " ^ string_of_type t)))
-    | Not -> 
-      (match t with 
+    | Not ->
+      (match t with
         Bool -> TUnaryOp(op, e), Bool
       | _ -> raise(Invalid_argument(
           "operator " ^ string_of_unop op ^
@@ -138,22 +138,22 @@ let string_of_actual_list actual_list =
 in
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
-  let env_funcs = env.funcs in 
+  let env_funcs = env.funcs in
     let rec find_func efuncs =
       match efuncs with
         [] -> raise (Failure("Undeclared function " ^ name))
-      | f_entry::tl -> if f_entry.name <> name then find_func tl else 
+      | f_entry::tl -> if f_entry.name <> name then find_func tl else
           let param_types = List.map
             (fun p_type -> (match p_type with
                 Channel(ft, dir) -> Channel(ft, Nodir)
               | _ -> p_type)) f_entry.param_types
           in
-          if (List.rev param_types) <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
+          if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
           raise (Failure("Incorrect paramater types for function call " ^ name ^
           ". param types: " ^ string_of_type_list f_entry.param_types ^ ". actual types: " ^
           string_of_actual_list actual_list)) else
-          TFunctionCall(name, actual_list), f_entry.ret_type  
-    in find_func env_funcs  
+          TFunctionCall(name, actual_list), f_entry.ret_type
+    in find_func env_funcs
 in
 let rec check_expr (env : environment) (e : expr) : typed_expr =
     match e with
@@ -174,10 +174,10 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ArrayInitializer(expr_list) -> TNoexpr, Void
     | ArrayElement(id, index_exp) -> TNoexpr, Void
-    | UnaryOp(unary_op, e) -> 
+    | UnaryOp(unary_op, e) ->
         let checked_expr = check_expr env e
         in check_unaryOp checked_expr unary_op
-    | FunctionCall(name, actual_list) -> 
+    | FunctionCall(name, actual_list) ->
         check_function_call name (List.map (fun exp -> check_expr env exp) actual_list) env
     | Noexpr -> TNoexpr, Void in
 
@@ -318,6 +318,8 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
 let check_struct_declaration (env: environment) (decl: struct_declaration) : (environment * s_struct_declaration) =
     raise(Failure("Not implemented")) in
 
+(* Check declaration returns a new environment, which is populated with the
+ * newly declared symbol *)
 let check_declaration (env: environment) (decl: declaration) : (environment * s_declaration) =
     match decl with
       VarDecl(vdecl) ->
@@ -339,6 +341,10 @@ let built_in_funcs = [
     { name = "print_char_newline"; param_types = [Char]; ret_type = Void; } ]
 in
 
+(* Here, we set up the initial environment. The return type is None, meaning
+ * that we have yet to descend into semantically analyzing functions. The
+ * symbol table is at the top level and has no parent. The functions in the
+ * current scope are only the built in ones. *)
 let env = {
     return_type = None;
     symbol_table = { parent = None; variables = []; };

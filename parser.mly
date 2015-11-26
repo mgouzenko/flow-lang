@@ -70,7 +70,7 @@ function_declaration:
 arg_decl_list:
     /* nothing */ {[]}
   | arg_decl {[$1]}
-  | arg_decl_list COMMA arg_decl {$3::$1}
+  | arg_decl COMMA arg_decl_list {$1::$3}
 
 arg_decl:
     simple_var_declaration {match $1.declaration_type with
