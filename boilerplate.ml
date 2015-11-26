@@ -6,29 +6,24 @@ let boilerplate_header =
  #include <stdlib.h>
  #include <stdbool.h>
 
+ #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
+                               int size; \
+                               bool poisoned; \
+                               pthread_cond_t write_ready; \
+                               pthread_cond_t read_ready; \
+                               int front; \
+                               int back; \
+                               int MAX_SIZE;
+
 struct _int_channel{
+  BASIC_CHANNEL_MEMBERS
   int queue[100];
-  int front;
-  int back;     // One past the last element
-  int MAX_SIZE;
-  int size;
-  bool poisoned;
-  pthread_mutex_t lock;
-  pthread_cond_t write_ready;
-  pthread_cond_t read_ready;
 };
 
 
 struct _char_channel{
+    BASIC_CHANNEL_MEMBERS
     char queue[100];
-    int front;
-    int back;     // One past the last element
-    int MAX_SIZE;
-    int size;
-    bool poisoned;
-    pthread_mutex_t lock;
-    pthread_cond_t write_ready;
-    pthread_cond_t read_ready;
 };
 
 int _init_int_channel(struct _int_channel *channel){

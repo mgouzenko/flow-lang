@@ -145,65 +145,73 @@ let compile (program : s_program) =
         translated_type ^ " " ^
         vdecl.s_declaration_id ^
         (match vdecl.s_declaration_type with
-            Channel(t, Nodir) -> ("= (" ^ translated_type ^
-                                  ") malloc(sizeof(" ^ "struct " ^ (get_channel_type vdecl.s_declaration_type) ^ (*^ translated_type ^ *)(*this doesn't work*) "));\n" ^ (* AWFUL code *)
-                                  "_init" ^ (get_channel_type vdecl.s_declaration_type) ^ "(" ^ vdecl.s_declaration_id ^ ")") (* AWFUL code TODO: must fix *)
-          | _ -> (match vdecl.s_declaration_initializer with
-                      TNoexpr, _ -> ""
-                    | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
+            (* If the declaration is a channel, we need to perform a malloc
+             * and also initialize the struct associated with the channel *)
+            Channel(t, Nodir) ->
+                let channel_type = get_channel_type vdecl.s_declaration_type in
+
+                 (* Casts malloc'ed pointer *)
+                ("= (" ^ translated_type ^ ")" ^
+
+                 (* Perform the malloc with the proper struct *)
+                 "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^
+
+                 (* Initialize the channel with the appropriate init function.
+                  * This will initializes the underlying array, locks, etc. *)
+                 "_init" ^ channel_type ^ "(" ^ vdecl.s_declaration_id ^ ")")
+
+            (* If it's not a channel, the variable may or may not need to be
+             * initialized. *)
+          | _ ->
+                (match vdecl.s_declaration_initializer with
+                    TNoexpr, _ -> ""
+                  | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
 
     (* Check if channel is in a conditional *)
     let eval_conditional_expr (typed_expr :typed_expr) =
-      let t = snd typed_expr in 
+      let t = snd typed_expr in
       match t with
         Channel(Int,_) -> "_wait_for_more_int(" ^ translate_expr typed_expr ^ ")"
-      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"   
+      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"
       | _ ->  translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
     (* Check the type of the poison token *)
-    let eval_poison_type (typed_expr : typed_expr) = 
+    let eval_poison_type (typed_expr : typed_expr) =
       let t = snd typed_expr in
-      match t with 
+      match t with
         Channel(Int,_) -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
       | Channel(Char,_) -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
       | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
-    let rec translate_stmt indentation_level (stmt: s_stmt) =
-        let rec make_tabs num =
-            if num = 0 then "" else ("\t" ^ make_tabs(num - 1)) in
-        let cur_tabs = make_tabs indentation_level in
-
-        cur_tabs ^
-        (match stmt with
+    let rec translate_stmt (stmt: s_stmt) =
+        match stmt with
             SExpr(e) -> translate_expr e ^ ";\n"
           | SBlock(stmt_list) ->
                   "{\n" ^
-                  String.concat "" (List.map (translate_stmt (indentation_level+1)) stmt_list) ^
-                  cur_tabs ^ "}\n"
+                  String.concat "" (List.map translate_stmt stmt_list) ^
+                  "}\n"
           | SReturn(e) -> "return " ^ translate_expr e ^ ";"
           | SDeclaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
           | SIf(e1, s1, s2) ->
                   "if(" ^ eval_conditional_expr e1 ^ ")\n" ^
-                  translate_stmt (indentation_level + 1) s1 ^ "\n" ^
-                  cur_tabs ^ "else" ^ "\n" ^
-                  translate_stmt (indentation_level + 1) s2
+                  translate_stmt s1 ^ "\nelse\n" ^
+                  translate_stmt s2
           | SFor(e1, e2, e3, s) ->
                   "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
-                  ")\n" ^ translate_stmt (indentation_level) s
+                  ")\n" ^ translate_stmt s
           | SWhile(e, s) ->
                   "while(" ^ eval_conditional_expr e ^ ")" ^
-                  translate_stmt (indentation_level + 1) s
+                  translate_stmt s
           | SContinue -> "continue;"
           | SBreak -> "break;"
-          | SPoison(e) -> eval_poison_type e
-        ) in
+          | SPoison(e) -> eval_poison_type e in
 
     (* unpacks the arguments to a process from void *_args *)
     let unpack_process_args (process: s_function_declaration) =
-        "\n\t" ^
-        (String.concat ";\n\t"
+        "\n" ^
+        (String.concat ";\n"
         (List.map (fun vdecl ->
             (translate_vdecl vdecl) ^ " = " ^
             "((struct _" ^ process.s_function_name ^ "_args*) _args)->" ^
@@ -212,9 +220,11 @@ let compile (program : s_program) =
         ";\n" in
 
     (* Translate flow function declaration to c function declaration *)
-    let translate_fdecl (fdecl : s_function_declaration) =
-        let opening_stmts = if fdecl.s_function_name = "main" then "pthread_mutex_init(&_thread_list_lock, NULL);\n" else "" in
-        let closing_stmts = if fdecl.s_function_name = "main" then "_wait_for_finish();\n" else "" in
+    let translate_fdecl (fdecl : s_function_declaration) : string =
+        let opening_stmts, closing_stmts =
+            if fdecl.s_function_name = "main"
+            then "pthread_mutex_init(&_thread_list_lock, NULL);\n", "_wait_for_finish();\n"
+            else "","" in
         let arg_decl_string_list = (List.map translate_vdecl fdecl.s_arguments) in
         (match fdecl.s_return_type with
             Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
@@ -225,7 +235,7 @@ let compile (program : s_program) =
         (match fdecl.s_return_type with
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
           | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^
-        String.concat "" (List.map (translate_stmt 1) fdecl.s_body) ^ closing_stmts ^ "\nreturn 0;}" (* WTF: TODO: return 0 should NOT be at the end of every function*)
+        String.concat "" (List.map translate_stmt fdecl.s_body) ^ closing_stmts ^ "\n}"
 
     (* Tranlsate flow struct declaration to c struct declaration *)
     and translate_struct_decl (sdecl: s_struct_declaration) = "Sdecl" in
