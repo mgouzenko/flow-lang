@@ -39,6 +39,11 @@ let is_logical (expr: typed_expr) : bool =
         | _, Channel(t, dir) -> true
         | _ -> false in
 
+let is_arithmetic (expr: typed_expr): bool =
+    match expr with
+          _, Int | _, Double -> true
+        | _ -> false in
+
 let string_of_binop = function
       Plus -> "+"
     | Minus -> "-"
@@ -78,20 +83,23 @@ let rec string_of_type = function
 
 let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
     let expr_details1, t1 = e1
-    and expr_details2, t2 = e2
-    in
+    and expr_details2, t2 = e2 in
     match op with
           (Plus | Minus | Times | Divide | Modulo | Lt | Leq | Gt | Geq) ->
-              (match (t1, t2) with
-                  | (Int, Int) -> TBinOp(e1, op, e2), Int
-                  | (_, _) -> raise (Invalid_argument(
+              if is_arithmetic e1 && is_arithmetic e2
+              then
+                  let final_type = (if t1 = Double || t2 = Double then Double
+                                     else Int) in
+                  TBinOp(e1, op, e2), final_type
+              else
+                  raise (Invalid_argument(
                         "operator " ^ string_of_binop op ^
                         " not compatible with " ^ string_of_type t1 ^
-                        " and " ^ string_of_type t2)))
+                        " and " ^ string_of_type t2))
         | (And | Or | Eq | Neq ) ->
-                if is_logical e1 && is_logical e2 then TBinOp(e1, op, e2), Bool
+                (if is_logical e1 && is_logical e2 then TBinOp(e1, op, e2), Bool
                 else raise (Invalid_argument("Attempting a logical operation" ^
-                                             "on invalid operands"))
+                                             "on invalid operands")))
         | Assign ->
                 (match expr_details1 with
                     TId(name) ->
@@ -103,29 +111,28 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                     | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
                     | _ -> raise (Invalid_argument("Invalid write to channel")) in
 
-let check_unaryOp (e : typed_expr) (op : unary_op) : typed_expr =
-  let expr_details, t = e
-  in
+let check_unop (e : typed_expr) (op : unary_op) : typed_expr =
+  let _, t = e in
   match op with
     Retrieve ->
-      (match t with
-        Channel(t, dir) -> TUnaryOp(op, e), t
-        | _ -> raise (Invalid_argument(
-            "operator " ^ string_of_unop op ^
-            " not compatible with " ^ string_of_type t)))
+        (match t with
+            (* Only In channels can be operated on by @ operator. *)
+            Channel(t, In) -> TUnaryOp(op, e), t
+          | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
+                                         " not compatible with " ^
+                                         string_of_type t)))
     | Negate ->
-      (match t with
-        Int -> TUnaryOp(op, e), Int
-      | Double -> TUnaryOp(op, e), Double
-      | _ -> raise (Invalid_argument(
-          "operator " ^ string_of_unop op ^
-          " not compatible with " ^ string_of_type t)))
+            (match t with
+                Int | Double -> TUnaryOp(op, e), t
+              | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
+                                             " not compatible with " ^
+                                             string_of_type t)))
     | Not ->
-      (match t with
-        Bool -> TUnaryOp(op, e), Bool
-      | _ -> raise(Invalid_argument(
-          "operator " ^ string_of_unop op ^
-          " not compatible with " ^ string_of_type t))) in
+            (* Channels and such can be operated on by the negation operator *)
+            if is_logical e then TUnaryOp(op, e), Bool
+            else raise(Invalid_argument(
+                       "operator " ^ string_of_unop op ^
+                       " not compatible with " ^ string_of_type t)) in
 
 let string_of_type_list type_list =
     List.fold_left (fun acc elm -> acc ^ ", " ^ (string_of_type elm))
@@ -138,23 +145,32 @@ let string_of_actual_list actual_list =
 in
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
-  let env_funcs = env.funcs in
-    let rec find_func efuncs =
-      match efuncs with
-        [] -> raise (Failure("Undeclared function " ^ name))
-      | f_entry::tl -> if f_entry.name <> name then find_func tl else
-          let param_types = List.map
+    try
+        (* Attempt to find the function in the current environment *)
+        let f_entry = List.find (fun f -> f.name = name) env.funcs in
+
+        (* Get rid of channel directions, for the purpose of
+         * parameter matching *)
+        let param_types =
+            List.map
             (fun p_type -> (match p_type with
                 Channel(ft, dir) -> Channel(ft, Nodir)
-              | _ -> p_type)) f_entry.param_types
-          in
-          if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list) then
-          raise (Failure("Incorrect paramater types for function call " ^ name ^
-          ". param types: " ^ string_of_type_list f_entry.param_types ^ ". actual types: " ^
-          string_of_actual_list actual_list)) else
+              | _ -> p_type))
+            f_entry.param_types in
+
+        (* Get the types of the arguments supplied to the function. These
+         * should be the same as the argument types aggregated from
+         * the entry. *)
+        if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
+        then raise (Failure("Incorrect paramater types for function call " ^ name ^
+                            ". param types: " ^ string_of_type_list f_entry.param_types ^
+                            ". actual types: " ^ string_of_actual_list actual_list))
+        else
           TFunctionCall(name, actual_list), f_entry.ret_type
-    in find_func env_funcs
-in
+    with Not_found -> raise (Failure("Undeclared function " ^ name)) in
+
+(* Expressions never return a new environment since they can't mutate the
+ * environments *)
 let rec check_expr (env : environment) (e : expr) : typed_expr =
     match e with
       IntLiteral(i) -> TIntLiteral(i), Int
@@ -163,6 +179,7 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
     | CharLiteral(c) -> TCharLiteral(c), Char
     | DoubleLiteral(d) -> TDoubleLiteral(d), Double
     | Id(s) ->
+        (* Try to find the variable in the symbol table *)
         let t =
             (try find_variable_type env.symbol_table s
             with Not_found -> raise (Failure("Undeclared identifier " ^ s)))
@@ -171,18 +188,23 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
         in check_binop checked_e1 checked_e2 op
+
+      (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ArrayInitializer(expr_list) -> TNoexpr, Void
     | ArrayElement(id, index_exp) -> TNoexpr, Void
     | UnaryOp(unary_op, e) ->
         let checked_expr = check_expr env e
-        in check_unaryOp checked_expr unary_op
+        in check_unop checked_expr unary_op
     | FunctionCall(name, actual_list) ->
         check_function_call name (List.map (fun exp -> check_expr env exp) actual_list) env
     | Noexpr -> TNoexpr, Void in
 
 let check_variable_declaration (env: environment) (decl: variable_declaration) =
     let expr_details, t = check_expr env decl.declaration_initializer in
+
+    (* Either the expression needs to match the declaration's type, or it
+     * can be Noexpr (which is void) *)
     if t = decl.declaration_type || t = Void then
         (try let _ =
             (* Try to find the a local variable of the same name. If found, it's an error. *)
@@ -212,19 +234,35 @@ let check_arg_declaration (env: environment) (decl: variable_declaration) =
 
 let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
     match stmt with
+        (* Expressions cannot mutate the environment, so the current env is
+         * returned *)
         Expr(e) -> (env, SExpr(check_expr env e))
+
+        (* Blocks have their own scope, so the environment must be the same
+         * after the block has been semantically analyzed. Hence, as with
+         * Expr, we return the current env. *)
       | Block(stmt_list) ->
             let _, checked_stmts = check_stmt_list env stmt_list in
             (env, SBlock(checked_stmts))
+
+        (* A return statement must have the same return type as the
+         * one we're expecting. Recall that the return type is set before
+         * entering a function. *)
       | Return(e) ->
             let expr_details, t = check_expr env e in
             (match env.return_type with
                   Some(rtype) -> if t = rtype then (env, SReturn(check_expr env e))
                                  else raise(Failure("Expression does not match return_type"))
                 | None -> raise(Failure("Return statement not in function")))
+
+        (* Declarations WILL mutate the environment, so we
+         * return the new environment. *)
       | Declaration(vdecl) ->
             let new_env, vdecl = check_variable_declaration env vdecl in
             (new_env, SDeclaration(vdecl))
+
+        (* The restriction on the expression in an if statement is that
+         * it must be logical (truey or falsey) *)
       | If(e, s1, s2) ->
             let checked_expr = check_expr env e
             and _, checked_stmt1 = check_stmt env s1
@@ -232,6 +270,10 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
             if is_logical checked_expr then
                 (env, SIf(checked_expr, checked_stmt1, checked_stmt2))
             else raise(Failure("Invalid expression in \"if\" statement"))
+
+        (* Similar restrictions as for if statments. However, we must additionally
+         * make sure to set the environment's in_loop variable before checking
+         * the statements (in case the statements include a break or continue *)
       | For(e1, e2, e3, s) ->
             let checked_expr1 = check_expr env e1
             and checked_expr2 = check_expr env e2
@@ -251,19 +293,29 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
             if is_logical checked_expr then
                 (env, SWhile(checked_expr, checked_stmt))
             else raise(Failure("Invalid expression in \"while\" statement"))
+
+        (* Continue and break statements don't make sense outside of a loop *)
       | Continue ->
             if env.in_loop = true then (env, SContinue)
             else raise(Failure("Not in a loop"))
       | Break ->
             if env.in_loop = true then (env, SBreak)
             else raise(Failure("Not in a loop"))
+
+        (* Only "out" channels can be poisoned from inside a process. *)
       | Poison(e) ->
             let expr_details, t = check_expr env e in
             match t with
-                  Channel(t, dir) -> (env, SPoison(expr_details, Channel(t, dir)))
+                  Channel(t, Out) -> (env, SPoison(expr_details, Channel(t, Out)))
+                | Channel(t, _) -> raise(Failure("Can only poison out channels"))
                 | _ -> raise(Failure("Attempting to poison a non-channel"))
 
 and check_stmt_list (env: environment) (stmt_list: stmt list) : (environment * s_stmt list) =
+    (* The environments have to be folded through the stmt list.
+     * Each statement takes the updated environment generated from
+     * the last one. acc (the accumulator) is a pair of env, checked
+     * statements. The statements must be reversed because they are collected
+     * backwards in a list. *)
     let new_env, checked_stmts = List.fold_left
     (fun acc stmt ->
         let env', stmt_node = check_stmt (fst acc) stmt in
@@ -275,6 +327,7 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
     (* Get the types of the function's parameters *)
     let p_types = List.map (fun vdecl -> vdecl.declaration_type) fdecl.arguments in
 
+    (* Make a function entry for the current function *)
     let f_entry = { name = fdecl.function_name;
                     param_types =  p_types;
                     ret_type = fdecl.return_type } in
@@ -332,6 +385,7 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
           let new_env, checked_sdecl = check_struct_declaration env sdecl in
           (new_env, SStructDecl(checked_sdecl)) in
 
+(* Should get consolidated *)
 let built_in_funcs = [
     { name = "print_string"; param_types = [String]; ret_type = Void; };
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
@@ -352,7 +406,7 @@ let env = {
     in_loop = false;
 } in
 
-(* acc is the accumulator; it's a tuple of env, decl_list.
+(* acc is the accumulator it's a tuple of env, decl_list.
  * the fold left builds the accumulator, threading the environment
  * through the list of declarations. When the fold finishes, decl_list
  * should be a built list of s_declarations *)
