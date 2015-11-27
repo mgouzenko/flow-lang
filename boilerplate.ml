@@ -15,6 +15,10 @@ let boilerplate_header =
                                int back; \
                                int MAX_SIZE;
 
+struct _channel{
+  BASIC_CHANNEL_MEMBERS
+};
+
 struct _int_channel{
   BASIC_CHANNEL_MEMBERS
   int queue[100];
@@ -22,11 +26,11 @@ struct _int_channel{
 
 
 struct _char_channel{
-    BASIC_CHANNEL_MEMBERS
-    char queue[100];
+  BASIC_CHANNEL_MEMBERS
+  char queue[100];
 };
 
-int _init_int_channel(struct _int_channel *channel){
+int _init_channel(struct _channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
       printf(\"Mutex init failed\");
       return 1;
@@ -44,113 +48,44 @@ int _init_int_channel(struct _int_channel *channel){
   return 0;
 }
 
-int _init_char_channel(struct _char_channel *channel){
-    if(pthread_mutex_init(&channel->lock, NULL) != 0){
-        printf(\"Mutex init failed\");
-        return 1;
-    }
-
-    if(pthread_cond_init(&channel->write_ready, NULL) +
-            pthread_cond_init(&channel->read_ready, NULL ) != 0){
-        printf(\"Cond init failed\");
-        return 1;
-    }
-    channel->MAX_SIZE = 100;
-    channel->front = 0;
-    channel->back = 0;
-    channel->poisoned = false;
-    return 0;
+#define MAKE_ENQUEUE_FUNC(type) void _enqueue_##type(type element, struct _##type##_channel *channel){ \
+    pthread_mutex_lock(&channel->lock); \
+    while(channel->size >= channel->MAX_SIZE) \
+        pthread_cond_wait(&channel->write_ready, &channel->lock); \
+    assert(channel->size < channel->MAX_SIZE); \
+    assert(!(channel->poisoned)); \
+    channel->queue[channel->back] = element; \
+    channel->back = (channel->back + 1) % channel->MAX_SIZE; \
+    channel->size++; \
+    pthread_cond_signal(&channel->read_ready); \
+    pthread_mutex_unlock(&channel->lock); \
 }
 
-void _enqueue_int(int element, struct _int_channel *channel){
-    pthread_mutex_lock(&channel->lock);
-    while(channel->size >= channel->MAX_SIZE)
-        pthread_cond_wait(&channel->write_ready, &channel->lock);
+MAKE_ENQUEUE_FUNC(int)
+MAKE_ENQUEUE_FUNC(char)
 
-    assert(channel->size < channel->MAX_SIZE);
-    assert(!(channel->poisoned));
-
-    channel->queue[channel->back] = element;
-    channel->back = (channel->back + 1) % channel->MAX_SIZE;
-
-    channel->size++;
-    pthread_cond_signal(&channel->read_ready);
-    pthread_mutex_unlock(&channel->lock);
+#define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
+    pthread_mutex_lock(&channel->lock); \
+    assert(channel->size != 0); \
+    type result = channel->queue[channel->front]; \
+    channel->front = (channel->front + 1) % channel->MAX_SIZE; \
+    channel->size--; \
+    pthread_cond_signal(&channel->write_ready); \
+    pthread_mutex_unlock(&channel->lock); \
+    return result; \
 }
 
-void _enqueue_char(char element, struct _char_channel *channel){
-    pthread_mutex_lock(&channel->lock);
-    while(channel->size >= channel->MAX_SIZE)
-        pthread_cond_wait(&channel->write_ready, &channel->lock);
+MAKE_DEQUEUE_FUNC(int)
+MAKE_DEQUEUE_FUNC(char)
 
-    assert(channel->size < channel->MAX_SIZE);
-    assert(!(channel->poisoned));
-
-    channel->queue[channel->back] = element;
-    channel->back = (channel->back + 1) % channel->MAX_SIZE;
-
-    channel->size++;
-    pthread_cond_signal(&channel->read_ready);
-    pthread_mutex_unlock(&channel->lock);
-}
-
-int _dequeue_int(struct _int_channel *channel){
-    pthread_mutex_lock(&channel->lock);
-    assert(channel->size != 0);
-
-    int result = channel->queue[channel->front];
-    channel->front = (channel->front + 1) % channel->MAX_SIZE;
-
-    channel->size--;
-    pthread_cond_signal(&channel->write_ready);
-    pthread_mutex_unlock(&channel->lock);
-    return result;
-}
-
-char _dequeue_char(struct _char_channel *channel){
-    pthread_mutex_lock(&channel->lock);
-    assert(channel->size != 0);
-
-    char result = channel->queue[channel->front];
-    channel->front = (channel->front + 1) % channel->MAX_SIZE;
-
-    channel->size--;
-    pthread_cond_signal(&channel->write_ready);
-    pthread_mutex_unlock(&channel->lock);
-    return result;
-}
-
-void _poison_int(struct _int_channel *channel) {
+void _poison(struct _channel * channel) {
     pthread_mutex_lock(&channel->lock);
     channel->poisoned = true;
     pthread_cond_signal(&channel->read_ready);
     pthread_mutex_unlock(&channel->lock);
 }
 
-void _poison_char(struct _char_channel *channel) {
-    pthread_mutex_lock(&channel->lock);
-    channel->poisoned = true;
-    pthread_cond_signal(&channel->read_ready);
-    pthread_mutex_unlock(&channel->lock);
-}
-
-bool _wait_for_more_int(struct _int_channel *channel) {
-    pthread_mutex_lock(&channel->lock);
-    while(channel->size == 0) {
-        if(channel->poisoned){
-            pthread_mutex_unlock(&channel->lock);
-            return false;
-        }
-        else {
-            pthread_cond_wait(&channel->read_ready, &channel->lock);
-        }
-    }
-    pthread_mutex_unlock(&channel->lock);
-    return true;
-
-}
-
-bool _wait_for_more_char(struct _char_channel *channel) {
+bool _wait_for_more(struct _channel *channel) {
     pthread_mutex_lock(&channel->lock);
     while(channel->size == 0) {
         if(channel->poisoned){
@@ -190,4 +125,5 @@ void _wait_for_finish(){
     curr = curr->next;
   }
 
-}\n"
+}\n
+"

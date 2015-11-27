@@ -25,13 +25,11 @@ let compile (program : s_program) =
       | List(t) -> "wtf?" in
 
     (* Check that && and || for channels use _wait_for_more *)
-    let check_wait_for_more exp t = 
+    let check_wait_for_more exp t =
       match t with
-        Channel(Int,_) -> "_wait_for_more_int(" ^ exp ^ ")"
-      | Channel(Char,_) ->  "_wait_for_more_char(" ^ exp ^ ")"
-      | Channel(_, _) -> "" (* TODO Needs to be populated with other channel types *)
+        Channel(_,_) -> "_wait_for_more( (struct _channel*) " ^ exp ^ ")"
       | _ -> exp
-    in 
+    in
 
     let rec translate_expr (expr: typed_expr) =
 
@@ -156,9 +154,8 @@ let compile (program : s_program) =
                  (* Perform the malloc with the proper struct *)
                  "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^
 
-                 (* Initialize the channel with the appropriate init function.
-                  * This will initializes the underlying array, locks, etc. *)
-                 "_init" ^ channel_type ^ "(" ^ vdecl.s_declaration_id ^ ")")
+                  (* This will initializes the locks, etc. *)
+                 "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")")
 
             (* If it's not a channel, the variable may or may not need to be
              * initialized. *)
@@ -171,8 +168,7 @@ let compile (program : s_program) =
     let eval_conditional_expr (typed_expr :typed_expr) =
       let t = snd typed_expr in
       match t with
-        Channel(Int,_) -> "_wait_for_more_int(" ^ translate_expr typed_expr ^ ")"
-      | Channel(Char,_) -> "_wait_for_more_char(" ^ translate_expr typed_expr ^ ")"
+        Channel(_,_) -> "_wait_for_more((struct _channel* ) " ^ translate_expr typed_expr ^ ")"
       | _ ->  translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
@@ -180,8 +176,7 @@ let compile (program : s_program) =
     let eval_poison_type (typed_expr : typed_expr) =
       let t = snd typed_expr in
       match t with
-        Channel(Int,_) -> "_poison_int(" ^ translate_expr typed_expr ^ ");"
-      | Channel(Char,_) -> "_poison_char(" ^ translate_expr typed_expr ^ ");"
+        Channel(_,_) -> "_poison((struct _channel* )" ^ translate_expr typed_expr ^ ");"
       | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
     in
 
