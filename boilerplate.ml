@@ -24,11 +24,12 @@ struct _int_channel{
   int queue[100];
 };
 
-
 struct _char_channel{
   BASIC_CHANNEL_MEMBERS
   char queue[100];
 };
+
+#define MALLOC_CHANNEL(type) = (struct _##type##_channel*) malloc(sizeof(struct _##type##_channel));
 
 int _init_channel(struct _channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
@@ -64,6 +65,15 @@ int _init_channel(struct _channel *channel){
 MAKE_ENQUEUE_FUNC(int)
 MAKE_ENQUEUE_FUNC(char)
 
+#define SELECT_QUEUEING_FUNC(x) _Generic((x), \
+    int: _enqueue_int, \
+    char: _enqueue_char, \
+    struct _int_channel*: _dequeue_int)
+
+//#define CALL_ENQUEUE_FUNC(e, c, t) SELECT_QUEUEING_FUNC(e)(e, c)
+
+#define CALL_ENQUEUE_FUNC(e, c, t) _enqueue_##t(e, c)
+
 #define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
     assert(channel->size != 0); \
@@ -77,6 +87,8 @@ MAKE_ENQUEUE_FUNC(char)
 
 MAKE_DEQUEUE_FUNC(int)
 MAKE_DEQUEUE_FUNC(char)
+
+#define CALL_DEQUEUE_FUNC(c, t) _dequeue_##t(c)
 
 void _poison(struct _channel * channel) {
     pthread_mutex_lock(&channel->lock);
@@ -124,6 +136,5 @@ void _wait_for_finish(){
     pthread_join(curr->thread, NULL);
     curr = curr->next;
   }
-
 }\n
 "

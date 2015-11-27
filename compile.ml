@@ -33,21 +33,11 @@ let compile (program : s_program) =
 
     let rec translate_expr (expr: typed_expr) =
 
-        (* Ensure the correct type is enqueued on channel *)
-        let enqueue_channel (typed_expr1: typed_expr) (typed_expr2 : typed_expr) =
-          let t = snd typed_expr2 in
-          match t with 
-            Channel(Int, _) -> "_enqueue_int(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
-          | Channel(Char, _) -> "_enqueue_char(" ^ (translate_expr typed_expr1) ^ ", " ^ (translate_expr typed_expr2) ^ ")"
-          |  _ -> "" (* TODO Needs to be populated with other channel types *)
-        in
-
-        let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) = 
-          let t1 = snd typed_exp1 
-          and t2 = snd typed_exp2 
+        let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) =
+          let t1 = snd typed_exp1
+          and t2 = snd typed_exp2
           and exp1 = translate_expr typed_exp1
-          and exp2 = translate_expr typed_exp2
-          in  
+          and exp2 = translate_expr typed_exp2 in
           match bin_op with
             Plus -> exp1 ^ "+" ^ exp2
           | Minus -> exp1 ^ "-" ^ exp2
@@ -62,35 +52,34 @@ let compile (program : s_program) =
           | Geq -> exp1 ^ ">=" ^ exp2
           | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
           | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
-          | Send -> enqueue_channel typed_exp1 typed_exp2
+          | Send ->
+                  "CALL_ENQUEUE_FUNC(" ^
+                  translate_expr typed_exp1 ^ ", " ^
+                  translate_expr typed_exp2 ^ "," ^
+                  translate_type t1 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
-        in
-
-        (* Ensure the correct type is dequed from channel *)
-        let dequeue_channel (typed_expr: typed_expr) =
-          let t = snd typed_expr in
-          match t with 
-            Channel(Int, _) -> "_dequeue_int(" ^ translate_expr typed_expr ^ ")"
-          | Channel(Char, _) -> "_dequeue_char(" ^ translate_expr typed_expr ^ ")" 
-          |  _ -> "" (* TODO Needs to be populated with other channel types *)
         in
 
         let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
           let exp = translate_expr typed_expr
-          in 
+          in
           match unary_op with
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
-          | Retrieve -> dequeue_channel typed_expr
+          | Retrieve ->
+                  (match snd typed_expr with
+                      Channel(t, dir) ->
+                          "CALL_DEQUEUE_FUNC(" ^ translate_expr typed_expr ^ "," ^ translate_type t ^ ")"
+                    | _ -> raise(Failure("Invalid type")))
         in
-        let translate_bool b = 
+        let translate_bool b =
           match b with
             true -> "1"
           | false -> "0"
         in
         let rec expr_list_to_string (expr_list : typed_expr list) =
           List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
-             (translate_expr (List.hd expr_list)) (List.tl expr_list) 
+             (translate_expr (List.hd expr_list)) (List.tl expr_list)
         in
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
@@ -116,12 +105,12 @@ let compile (program : s_program) =
         | TCharLiteral(c), _ -> "\'" ^ String.make 1 c ^ "\'"
         | TDoubleLiteral(d), _ -> string_of_float d
         | TId(i), _ -> i
-        | TBinOp(expr1, bin_op, expr2), _ -> 
+        | TBinOp(expr1, bin_op, expr2), _ ->
              translate_bin_op expr1 bin_op expr2
-        | TUnaryOp(unary_op, expr), _ -> 
-            translate_unary_op unary_op expr 
-        | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list  
-        | TFunctionCall(id, expr_list), _ -> translate_function id expr_list  
+        | TUnaryOp(unary_op, expr), _ ->
+            translate_unary_op unary_op expr
+        | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list
+        | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
         | TArrayInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TArrayElement(id, expr), _ -> id ^ "[" ^ translate_expr expr ^ "]"
@@ -129,33 +118,21 @@ let compile (program : s_program) =
 
     in
 
-    (* Get the type of the channel *)
-    let get_channel_type (chan: flow_type) = 
-      match chan with 
-        Channel(Int, _) -> "_int_channel"
-      | Channel(Char, _) -> "_char_channel"
-      | _ -> ""
-    in
-
     (* Translate flow variable declaration to c variable declaration *)
     let translate_vdecl (vdecl : s_variable_declaration) =
         let translated_type = translate_type vdecl.s_declaration_type in
         translated_type ^ " " ^
-        vdecl.s_declaration_id ^
+        vdecl.s_declaration_id ^ " " ^
         (match vdecl.s_declaration_type with
             (* If the declaration is a channel, we need to perform a malloc
              * and also initialize the struct associated with the channel *)
             Channel(t, Nodir) ->
-                let channel_type = get_channel_type vdecl.s_declaration_type in
-
-                 (* Casts malloc'ed pointer *)
-                ("= (" ^ translated_type ^ ")" ^
-
                  (* Perform the malloc with the proper struct *)
-                 "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^
+                 (* "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^ *)
+                 "MALLOC_CHANNEL(" ^ translate_type t ^ ")\n" ^
 
                   (* This will initializes the locks, etc. *)
-                 "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")")
+                 "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
 
             (* If it's not a channel, the variable may or may not need to be
              * initialized. *)
