@@ -2,7 +2,8 @@ open Ast;;
 open Sast;;
 open Boilerplate;;
 
-let supported_channels = [Int; Char;]
+let supported_channels = [Int; Char; Double]
+let supported_lists = [Int; ]
 
 let compile (program : s_program) =
 
@@ -21,8 +22,11 @@ let compile (program : s_program) =
                   "struct _" ^ translate_type t ^ "_channel* "
               with Not_found -> raise (Failure("Channel not supported")))
       | Struct(id) -> "struct " ^ id
-      | Array(t, size, id) ->  translate_type t ^ " " ^ id ^ "[" ^ string_of_int size ^ "]"
-      | List(t) -> "wtf?" in
+      | List(t) ->
+              (try
+                  let _ = List.find (fun e -> t = e) supported_channels in
+                  "struct _" ^ translate_type t ^ "_list* "
+              with Not_found -> raise (Failure("Channel not supported"))) in
 
     (* Check that && and || for channels use _wait_for_more *)
     let check_wait_for_more exp t =
@@ -34,10 +38,8 @@ let compile (program : s_program) =
     let rec translate_expr (expr: typed_expr) =
 
         let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) =
-          let t1 = snd typed_exp1
-          and t2 = snd typed_exp2
-          and exp1 = translate_expr typed_exp1
-          and exp2 = translate_expr typed_exp2 in
+          let t1 = snd typed_exp1 and t2 = snd typed_exp2
+          and exp1 = translate_expr typed_exp1 and exp2 = translate_expr typed_exp2 in
           match bin_op with
             Plus -> exp1 ^ "+" ^ exp2
           | Minus -> exp1 ^ "-" ^ exp2
@@ -54,10 +56,14 @@ let compile (program : s_program) =
           | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
           | Send ->
                   "CALL_ENQUEUE_FUNC(" ^
-                  translate_expr typed_exp1 ^ ", " ^
-                  translate_expr typed_exp2 ^ "," ^
+                  exp1 ^ ", " ^ exp2 ^ "," ^
                   translate_type t1 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
+          | Concat ->
+                  match (t1, t2) with
+                    | List(t), _ -> "_add_back(" ^ exp2 ^ ", " ^ exp1 ^ ")"
+                    | _, List(t) -> "_add_front(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+                    | _, _ -> raise(Failure("Invalid concatenation"))
         in
 
         let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
@@ -90,6 +96,7 @@ let compile (program : s_program) =
             | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_char_newline" -> "printf(\"%c\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_double_newline" -> "printf(\"%G\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
@@ -112,14 +119,14 @@ let compile (program : s_program) =
         | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list
         | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
-        | TArrayInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
-        | TArrayElement(id, expr), _ -> id ^ "[" ^ translate_expr expr ^ "]"
+        | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
+        | TListElement(id, expr), _ -> "*_get(" ^ translate_expr expr ^ "," ^ id ^ ")"
         | TNoexpr, _ -> ""
 
     in
 
     (* Translate flow variable declaration to c variable declaration *)
-    let translate_vdecl (vdecl : s_variable_declaration) =
+    let translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
         let translated_type = translate_type vdecl.s_declaration_type in
         translated_type ^ " " ^
         vdecl.s_declaration_id ^ " " ^
@@ -133,9 +140,9 @@ let compile (program : s_program) =
 
                   (* This will initializes the locks, etc. *)
                  "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
-
-            (* If it's not a channel, the variable may or may not need to be
-             * initialized. *)
+          | List(t) ->
+                  if is_arg then ""
+                  else ";\n_init_int_list(" ^ vdecl.s_declaration_id ^ ")"
           | _ ->
                 (match vdecl.s_declaration_initializer with
                     TNoexpr, _ -> ""
@@ -165,7 +172,7 @@ let compile (program : s_program) =
                   String.concat "" (List.map translate_stmt stmt_list) ^
                   "}\n"
           | SReturn(e) -> "return " ^ translate_expr e ^ ";"
-          | SDeclaration(vdecl) -> translate_vdecl vdecl ^ ";\n"
+          | SDeclaration(vdecl) -> translate_vdecl vdecl false ^ ";\n"
           | SIf(e1, s1, s2) ->
                   "if(" ^ eval_conditional_expr e1 ^ ")\n" ^
                   translate_stmt s1 ^ "\nelse\n" ^
@@ -185,7 +192,7 @@ let compile (program : s_program) =
         "\n" ^
         (String.concat ";\n"
         (List.map (fun vdecl ->
-            (translate_vdecl vdecl) ^ " = " ^
+            (translate_vdecl vdecl false) ^ " = " ^
             "((struct _" ^ process.s_function_name ^ "_args*) _args)->" ^
             vdecl.s_declaration_id)
         process.s_arguments)) ^
@@ -197,7 +204,7 @@ let compile (program : s_program) =
             if fdecl.s_function_name = "main"
             then "pthread_mutex_init(&_thread_list_lock, NULL);\n", "_wait_for_finish();\n"
             else "","" in
-        let arg_decl_string_list = (List.map translate_vdecl fdecl.s_arguments) in
+        let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
             Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
                      String.concat ";\n\t" (List.rev arg_decl_string_list) ^ ";\n};\n")
@@ -217,7 +224,7 @@ let compile (program : s_program) =
     String.concat "\n"
     (List.map (fun decl ->
         match decl with
-          SVarDecl(vdecl) -> translate_vdecl vdecl
+          SVarDecl(vdecl) -> translate_vdecl vdecl false
         | SFuncDecl(fdecl) -> translate_fdecl fdecl
         | SStructDecl(sdecl) -> translate_struct_decl sdecl)
     (List.rev program)) ^ "\n"

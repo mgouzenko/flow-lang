@@ -59,6 +59,7 @@ let string_of_binop = function
     | Send -> "->"
     | And -> "&&"
     | Or -> "||"
+    | Concat -> "::"
     | Assign -> "=" in
 
 let string_of_unop = function
@@ -78,7 +79,6 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
     | Struct(s) -> s in
 
 let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
@@ -107,9 +107,16 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                         else raise (Invalid_argument("Identifier type does not match expression"))
                   | _ -> raise (Invalid_argument("Attempting assignment to non-id")))
         | Send ->
-                match t2 with
+                (match t2 with
                     | Channel(t, Out) when t = t1 -> TBinOp(e1, op, e2), t1
-                    | _ -> raise (Invalid_argument("Invalid write to channel")) in
+                    | _ -> raise (Invalid_argument("Invalid write to channel")))
+        | Concat ->
+                match (t1, t2) with
+                    List(t), _ -> if t = t2 then TBinOp(e1, op, e2), t1
+                                  else raise(Failure("Type mismatch for concatenation"))
+                  | _, List(t) -> if t = t1 then TBinOp(e1, op, e2), t2
+                                  else raise(Failure("Type mismatch for concatenation"))
+                  | _, _ -> raise(Failure("Concatenation is only valid for a list and element")) in
 
 let check_unop (e : typed_expr) (op : unary_op) : typed_expr =
   let _, t = e in
@@ -183,7 +190,7 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
         let t =
             (try find_variable_type env.symbol_table s
             with Not_found -> raise (Failure("Undeclared identifier " ^ s)))
-        in TId(s), t
+            in TId(s), t
     | BinOp(e1, op, e2) ->
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
@@ -191,8 +198,17 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
 
       (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
-    | ArrayInitializer(expr_list) -> TNoexpr, Void
-    | ArrayElement(id, index_exp) -> TNoexpr, Void
+    | ListInitializer(expr_list) -> TNoexpr, Void
+    | ListElement(id, e) ->
+            let id_type = (try find_variable_type env.symbol_table id
+            with Not_found -> raise (Failure("Undeclared identifier " ^ id))) in
+                (match id_type with
+                    List(list_type) ->
+                        let index_exp = check_expr env e in
+                        if snd index_exp = Int
+                        then TListElement(id, index_exp), list_type
+                        else raise (Failure("List index must evaluate to integer type"))
+                  | _ -> raise (Failure("Identifier is not a list.")))
     | UnaryOp(unary_op, e) ->
         let checked_expr = check_expr env e
         in check_unop checked_expr unary_op
@@ -392,7 +408,8 @@ let built_in_funcs = [
     { name = "print_char"; param_types = [Char]; ret_type = Void; };
     { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
     { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
-    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; } ]
+    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; };
+    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; } ]
 in
 
 (* Here, we set up the initial environment. The return type is None, meaning

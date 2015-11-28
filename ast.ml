@@ -1,7 +1,7 @@
 type bin_op =
         Plus | Minus | Times | Divide | Modulo
       | Neq  | Lt    | Leq   | Gt     | Geq    | Eq
-      | Send | And   | Or    | Assign
+      | Send | And   | Or    | Assign | Concat
 
 type unary_op = Retrieve | Negate | Not
 type direction = In | Out | Nodir
@@ -16,8 +16,7 @@ type flow_type =
     | Proc
     | String
     | Channel of flow_type * direction
-    | Struct of string    (* Needs a string representing struct type *)
-    | Array of flow_type * int * string
+    | Struct of string
     | List of flow_type
 
 type dot_initializer = {
@@ -32,8 +31,8 @@ and expr =
   | CharLiteral of char
   | DoubleLiteral of float
   | StructInitializer of dot_initializer list
-  | ArrayInitializer of expr list
-  | ArrayElement of string * expr
+  | ListInitializer of expr list
+  | ListElement of string * expr
   | Id of string
   | BinOp of expr * bin_op * expr
   | UnaryOp of unary_op * expr

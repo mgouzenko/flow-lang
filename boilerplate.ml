@@ -1,10 +1,69 @@
 let boilerplate_header =
 "
  #include <assert.h>
+ #include <gc.h>
  #include <pthread.h>
  #include <stdio.h>
  #include <stdlib.h>
  #include <stdbool.h>
+
+
+    int INIT_SIZE = 4;
+
+    struct _int_list{
+        int front;
+        int back;
+        int MAX_SIZE;
+        int size;
+        int *list;
+    };
+
+    void _init_int_list(struct _int_list* l){
+        l->list = GC_MALLOC(sizeof(int) * INIT_SIZE);
+        l->MAX_SIZE = INIT_SIZE;
+        l->size = l->front = l->back = 0;
+    }
+
+    void _ensure_capacity(struct _int_list* l){
+        if(l->size == l->MAX_SIZE){
+            l->list = GC_REALLOC(l->list, 2 * l->MAX_SIZE);
+            l->MAX_SIZE = 2 * l->MAX_SIZE;
+        }
+    }
+
+    void _add_back(int e, struct _int_list* l){
+        _ensure_capacity(l);
+        l->list[l->back] =  e;
+        l->back = (l->back + 1) % l->MAX_SIZE;
+        l->size++;
+    }
+
+    void _add_front(int e, struct _int_list* l){
+        _ensure_capacity(l);
+        l->front = (l->front == 0 ? l->MAX_SIZE - 1 : l->front - 1);
+        l->list[l->front] = e;
+        l->size++;
+    }
+
+    int _dequeue(int e, struct _int_list* l){
+        if(l->size == 0){
+            printf(\"List is empty\");
+            exit(1);
+        }
+        int result = l->list[l->front];
+        l->front = (l->front + 1) % l->MAX_SIZE;
+        l->size--;
+        return result;
+    }
+
+    int *_get(int idx, struct _int_list* l){
+        if(idx > (l->size - 1)){
+            printf(\"Index out of bounds\");
+            exit(1);
+        }
+
+        return l->list + (l->front + idx);
+    }
 
  #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
                                int size; \
@@ -27,6 +86,11 @@ struct _int_channel{
 struct _char_channel{
   BASIC_CHANNEL_MEMBERS
   char queue[100];
+};
+
+struct _double_channel{
+  BASIC_CHANNEL_MEMBERS
+  double queue[100];
 };
 
 #define MALLOC_CHANNEL(type) = (struct _##type##_channel*) malloc(sizeof(struct _##type##_channel));
@@ -64,6 +128,7 @@ int _init_channel(struct _channel *channel){
 
 MAKE_ENQUEUE_FUNC(int)
 MAKE_ENQUEUE_FUNC(char)
+MAKE_ENQUEUE_FUNC(double)
 
 #define SELECT_QUEUEING_FUNC(x) _Generic((x), \
     int: _enqueue_int, \
@@ -87,6 +152,7 @@ MAKE_ENQUEUE_FUNC(char)
 
 MAKE_DEQUEUE_FUNC(int)
 MAKE_DEQUEUE_FUNC(char)
+MAKE_DEQUEUE_FUNC(double)
 
 #define CALL_DEQUEUE_FUNC(c, t) _dequeue_##t(c)
 

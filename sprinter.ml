@@ -31,6 +31,7 @@ let print_string_of_binop op =
       | And -> "and"
       | Or  -> "or"
       | Assign -> "="
+      | Concat -> "::"
           in print_dot_node opstring;;
 
 let print_string_of_unop op =
@@ -47,13 +48,13 @@ let rec print_string_of_expr = function
   | TCharLiteral(c), _ -> print_dot_node (Char.escaped c)
   | TDoubleLiteral(d), _ -> print_dot_node "Some double"
   | TStructInitializer(decl_list), _ -> print_dot_node "StructInitializer"
-  | TArrayInitializer(expr_list), _ -> 
-          let arrinitnode = print_dot_node "ArrayInitializer"
+  | TListInitializer(expr_list), _ -> 
+          let arrinitnode = print_dot_node "ListInitializer"
           in let enodes = List.map print_string_of_expr expr_list
           in let _ = List.iter (function enode -> print_dot_edge arrinitnode enode) 
                                 enodes 
           in arrinitnode
-  | TArrayElement(name, idx), _ -> 
+  | TListElement(name, idx), _ -> 
           let arrelemnode = print_dot_node name
           in let idxnode = print_string_of_expr idx
           in let _ = print_dot_edge arrelemnode idxnode ~desc: "index"
@@ -89,7 +90,6 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
     | Struct(s) -> s;;
 
 let print_string_of_type t =

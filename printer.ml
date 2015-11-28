@@ -30,6 +30,7 @@ let print_string_of_binop op =
       | And -> "and"
       | Or  -> "or"
       | Assign -> "="
+      | Concat -> "::"
           in print_dot_node opstring;;
 
 let print_string_of_unop op =
@@ -46,13 +47,13 @@ let rec print_string_of_expr = function
   | CharLiteral(c) -> print_dot_node (Char.escaped c)
   | DoubleLiteral(d) -> print_dot_node "Some double"
   | StructInitializer(decl_list) -> print_dot_node "StructInitializer"
-  | ArrayInitializer(expr_list) -> 
-          let arrinitnode = print_dot_node "ArrayInitializer"
+  | ListInitializer(expr_list) -> 
+          let arrinitnode = print_dot_node "ListInitializer"
           in let enodes = List.map print_string_of_expr expr_list
           in let _ = List.iter (function enode -> print_dot_edge arrinitnode enode) 
                                 enodes 
           in arrinitnode
-  | ArrayElement(name, idx) -> 
+  | ListElement(name, idx) -> 
           let arrelemnode = print_dot_node name
           in let idxnode = print_string_of_expr idx
           in let _ = print_dot_edge arrelemnode idxnode ~desc: "index"
@@ -88,7 +89,6 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Array(t, n, s) -> s ^ "<" ^ string_of_type t ^ ">[" ^ string_of_int n ^ "]"
     | Struct(s) -> s;;
 
 let print_string_of_type t =

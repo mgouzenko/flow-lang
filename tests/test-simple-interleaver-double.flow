@@ -1,0 +1,33 @@
+proc tokenGen(out double ochan, double token) {
+  int i = 0;
+  for (i; i < 3; i=i+1) {
+    token -> ochan;
+  }
+  poison ochan;
+}
+
+proc printer(in double chan) {
+  while(chan) {
+    print_double_newline(@chan);
+  }
+}
+
+proc interleaver(in double chan1, in double chan2, out double ochan) {
+  while(chan1 || chan2){
+    if(chan1) {@chan1 -> ochan;}
+    if(chan2) {@chan2 -> ochan;}
+  }
+  poison ochan;
+}
+
+int main() {
+  channel<double> chan1;
+  channel<double> chan2;
+  channel<double> chan3;
+  double double1 = 1.5;
+  double double2 = 2.7;
+  tokenGen(chan1, double1);
+  tokenGen(chan2, double2);
+  interleaver(chan1, chan2, chan3);
+  printer(chan3);
+}

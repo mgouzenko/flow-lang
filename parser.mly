@@ -1,13 +1,13 @@
 %{ open Ast %}
 
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
-%token PLUS MINUS TIMES DIVIDE MODULO ASSIGN
+%token PLUS MINUS TIMES DIVIDE MODULO ASSIGN CONCAT
 %token WRITE_CHANNEL READ_CHANNEL PROC CHANNEL IN OUT
 %token DOT
 %token BREAK CONTINUE VOID
 %token POISON
 %token OR AND NOT
-%token DOUBLE CHAR BOOL INT STRING LIST ARRAY STRUCT
+%token DOUBLE CHAR BOOL INT STRING LIST STRUCT
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
 %token <int> INT_LITERAL
@@ -25,7 +25,7 @@
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %right SHIFT_LEFT SHIFT_RIGHT
-%left PLUS MINUS
+%left PLUS MINUS CONCAT
 %left TIMES DIVIDE MODULO
 %left WRITE_CHANNEL READ_CHANNEL
 %left DOT
@@ -87,7 +87,6 @@ flow_type:
   | PROC                      {Proc}
   | STRING                    {String}
   | IDENTIFIER                {Struct($1)}
-  | LT flow_type GT LBRACKET INT_LITERAL RBRACKET IDENTIFIER {Array($2, $5, $7)}
   | LIST LT flow_type GT      {List($3)}
   | CHANNEL LT flow_type GT   {Channel($3, Nodir)}
   | IN flow_type              {Channel($2, In)}
@@ -179,12 +178,13 @@ expr:
   | CHAR_LITERAL {CharLiteral($1)}
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
+  | IDENTIFIER LBRACKET expr RBRACKET { ListElement($1, $3) }
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
-  | LBRACE expr_list RBRACE {ArrayInitializer($2)}
-  | IDENTIFIER LBRACKET expr RBRACKET {ArrayElement($1, $3)}
+  | LBRACE expr_list RBRACE {ListInitializer($2)}
   | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
+  | expr CONCAT expr {BinOp($1, Concat, $3)}
   | expr PLUS expr {BinOp($1, Plus, $3)}
   | expr MINUS expr {BinOp($1, Minus, $3)}
   | expr TIMES expr {BinOp($1, Times, $3)}

@@ -34,6 +34,7 @@ rule token = parse
 | '%'           { MODULO }
 | '@'           { READ_CHANNEL }
 | "->"          { WRITE_CHANNEL }
+| "::"          { CONCAT }
 | "if"          { IF }
 | "else"        { ELSE }
 | "for"         { FOR }
