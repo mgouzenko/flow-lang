@@ -25,7 +25,7 @@ let compile (program : s_program) =
       | List(t) ->
               (try
                   let _ = List.find (fun e -> t = e) supported_channels in
-                  "struct _" ^ translate_type t ^ "_list* "
+                  "struct _" ^ translate_type t ^ "_list "
               with Not_found -> raise (Failure("Channel not supported"))) in
 
     (* Check that && and || for channels use _wait_for_more *)
@@ -61,8 +61,8 @@ let compile (program : s_program) =
           | Assign -> exp1 ^ "=" ^ exp2
           | Concat ->
                   match (t1, t2) with
-                    | List(t), _ -> "_add_back(" ^ exp2 ^ ", " ^ exp1 ^ ")"
-                    | _, List(t) -> "_add_front(" ^ exp1 ^ ", " ^ exp2 ^ ")"
+                    | List(t), _ -> "_add_back(" ^ exp2 ^ ", &" ^ exp1 ^ ")"
+                    | _, List(t) -> "_add_front(&" ^ exp1 ^ ", " ^ exp2 ^ ")"
                     | _, _ -> raise(Failure("Invalid concatenation"))
         in
 
@@ -120,7 +120,7 @@ let compile (program : s_program) =
         | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
-        | TListElement(id, expr), _ -> "*_get(" ^ translate_expr expr ^ "," ^ id ^ ")"
+        | TListElement(id, expr), _ -> "_get(" ^ translate_expr expr ^ ", &" ^ id ^ ")"
         | TNoexpr, _ -> ""
 
     in
@@ -142,7 +142,7 @@ let compile (program : s_program) =
                  "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
           | List(t) ->
                   if is_arg then ""
-                  else ";\n_init_int_list(" ^ vdecl.s_declaration_id ^ ")"
+                  else ";\n_init_int_list(&" ^ vdecl.s_declaration_id ^ ")"
           | _ ->
                 (match vdecl.s_declaration_initializer with
                     TNoexpr, _ -> ""

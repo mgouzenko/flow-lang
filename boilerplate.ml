@@ -6,64 +6,69 @@ let boilerplate_header =
  #include <stdio.h>
  #include <stdlib.h>
  #include <stdbool.h>
+ #include <string.h>
 
 
-    int INIT_SIZE = 4;
+int INIT_SIZE = 4;
 
-    struct _int_list{
-        int front;
-        int back;
-        int MAX_SIZE;
-        int size;
-        int *list;
-    };
+struct _int_list{
+	int front;
+	int back;
+	int MAX_SIZE;
+	int size;
+	int *list;
+};
 
-    void _init_int_list(struct _int_list* l){
-        l->list = GC_MALLOC(sizeof(int) * INIT_SIZE);
-        l->MAX_SIZE = INIT_SIZE;
-        l->size = l->front = l->back = 0;
-    }
+void _init_int_list(struct _int_list* l){
+	l->list = malloc(sizeof(int) * INIT_SIZE);
+	l->MAX_SIZE = INIT_SIZE;
+	l->size = l->front = l->back = 0;
+}
 
-    void _ensure_capacity(struct _int_list* l){
-        if(l->size == l->MAX_SIZE){
-            l->list = GC_REALLOC(l->list, 2 * l->MAX_SIZE);
-            l->MAX_SIZE = 2 * l->MAX_SIZE;
-        }
-    }
 
-    void _add_back(int e, struct _int_list* l){
-        _ensure_capacity(l);
-        l->list[l->back] =  e;
-        l->back = (l->back + 1) % l->MAX_SIZE;
-        l->size++;
-    }
+struct _int_list _copy(struct _int_list* l){
+	struct _int_list new_list;
+	new_list.size = l->size;
+	if(l->size == l->MAX_SIZE){
+		new_list.list = malloc(sizeof(int) * 2 * l->MAX_SIZE);
+		if(l->front < l->back){
+			memcpy((void *) new_list.list, l->list, sizeof(int) * l->size);
+		} else {
+			int num_tailing = l->MAX_SIZE - l->front;
+			memcpy((void *) new_list.list, l->list + l->front, sizeof(int) * num_tailing);
+			memcpy((void *) new_list.list + num_tailing, l->list, sizeof(int) * (l->back+1));
+		}
+	} else {
+		new_list.list = malloc(sizeof(int) * l-> MAX_SIZE);
+		memcpy((void *) new_list.list, l->list, l->MAX_SIZE);
+	}
+	return new_list;
+}
 
-    void _add_front(int e, struct _int_list* l){
-        _ensure_capacity(l);
-        l->front = (l->front == 0 ? l->MAX_SIZE - 1 : l->front - 1);
-        l->list[l->front] = e;
-        l->size++;
-    }
+struct _int_list _add_back(int e, struct _int_list* l){
+	struct _int_list new_list = _copy(l);
+	l->list[l->back] =  e;
+	l->back = (l->back + 1) % l->MAX_SIZE;
+	l->size++;
+	return new_list;
+}
 
-    int _dequeue(int e, struct _int_list* l){
-        if(l->size == 0){
-            printf(\"List is empty\");
-            exit(1);
-        }
-        int result = l->list[l->front];
-        l->front = (l->front + 1) % l->MAX_SIZE;
-        l->size--;
-        return result;
-    }
+struct _int_list _add_front(int e, struct _int_list* l){
+	struct _int_list new_list = _copy(l);
+	l->front = (l->front == 0 ? l->MAX_SIZE - 1 : l->front - 1);
+	l->list[l->front] = e;
+	l->size++;
+	return new_list;
+}
 
-    int *_get(int idx, struct _int_list* l){
-        if(idx > (l->size - 1)){
-            printf(\"Index out of bounds\");
-            exit(1);
-        }
+int _get(int idx, struct _int_list* l){
+	if(idx > (l->size - 1)){
+		printf(\"Index out of bounds\");
+		exit(1);
+	}
 
-        return l->list + (l->front + idx);
-    }
+	return l->list[l->front + idx];
+}
 
  #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
                                int size; \
