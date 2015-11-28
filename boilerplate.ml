@@ -1,7 +1,6 @@
 let boilerplate_header =
 "
  #include <assert.h>
- #include <gc.h>
  #include <pthread.h>
  #include <stdio.h>
  #include <stdlib.h>

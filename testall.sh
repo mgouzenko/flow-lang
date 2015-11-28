@@ -68,7 +68,7 @@ Check() {
 
     generatedfiles="$generatedfiles ${basename}.c" &&
     Run "$FLOWC" "-c" $1 ">" ${basename}.c &&
-    gcc -lgc ${basename}.c  &&
+    gcc ${basename}.c  &&
     ./a.out > ${basename}.c.out
     Compare ${basename}.c.out ${reffile}.out ${basename}.c.diff
 
