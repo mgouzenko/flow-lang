@@ -62,7 +62,7 @@ let compile (program : s_program) =
           | Concat ->
                   match (t1, t2) with
                     | List(t), _ -> "_add_back(" ^ exp2 ^ ", &" ^ exp1 ^ ")"
-                    | _, List(t) -> "_add_front(&" ^ exp1 ^ ", " ^ exp2 ^ ")"
+                    | _, List(t) -> "_add_front(" ^ exp1 ^ ", &" ^ exp2 ^ ")"
                     | _, _ -> raise(Failure("Invalid concatenation"))
         in
 

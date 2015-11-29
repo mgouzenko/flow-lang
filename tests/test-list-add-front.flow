@@ -1,0 +1,16 @@
+int main()
+{
+  list <int> test;
+  1::test;
+  2::test;
+  3::test;
+  4::test;
+  5::test;
+
+  int i;
+  for (i=0; i < 5; i=i+1) {
+    print_int_newline(test[i]);
+  }
+
+  return 0;
+}
