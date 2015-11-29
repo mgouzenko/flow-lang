@@ -198,9 +198,17 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
 
       (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
-    (* TODO make sure to check expr_list and get type *) 
-    | ListInitializer(expr_list) -> TNoexpr, Void
-        (*TListInitializer(expr_list), List(Int)*)
+    | ListInitializer(expr_list) ->
+        let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
+        let list_type = snd(List.hd checked_expr_list) in 
+        let of_same_type =
+            List.for_all
+            (fun e -> (match snd(e) with
+                list_type -> true
+              | _ -> false))
+            checked_expr_list in
+        if of_same_type then TListInitializer(checked_expr_list), List(list_type)
+        else raise(Failure("List must be initialized with expressions of the same type"))
     | ListElement(id, e) ->
             let id_type = (try find_variable_type env.symbol_table id
             with Not_found -> raise (Failure("Undeclared identifier " ^ id))) in

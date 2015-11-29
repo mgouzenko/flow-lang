@@ -24,9 +24,9 @@ let compile (program : s_program) =
       | Struct(id) -> "struct " ^ id
       | List(t) ->
               (try
-                  let _ = List.find (fun e -> t = e) supported_channels in
+                  let _ = List.find (fun e -> t = e) supported_lists in
                   "struct _" ^ translate_type t ^ "_list "
-              with Not_found -> raise (Failure("Channel not supported"))) in
+              with Not_found -> raise (Failure("List not supported"))) in
 
     (* Check that && and || for channels use _wait_for_more *)
     let check_wait_for_more exp t =
