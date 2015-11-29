@@ -180,7 +180,7 @@ expr:
   | IDENTIFIER {Id($1)}
   | IDENTIFIER LBRACKET expr RBRACKET { ListElement($1, $3) }
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
-  | LBRACE expr_list RBRACE {ListInitializer($2)}
+  | LBRACKET expr_list RBRACKET {ListInitializer($2)}
   | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}

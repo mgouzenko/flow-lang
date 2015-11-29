@@ -198,7 +198,9 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
 
       (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
+    (* TODO make sure to check expr_list and get type *) 
     | ListInitializer(expr_list) -> TNoexpr, Void
+        (*TListInitializer(expr_list), List(Int)*)
     | ListElement(id, e) ->
             let id_type = (try find_variable_type env.symbol_table id
             with Not_found -> raise (Failure("Undeclared identifier " ^ id))) in

@@ -119,6 +119,7 @@ let compile (program : s_program) =
         | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list
         | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
+        (* TODO need to work on initializing list with add_back and front *)
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TListElement(id, expr), _ -> "_get(" ^ translate_expr expr ^ ", &" ^ id ^ ")"
         | TNoexpr, _ -> ""

@@ -25,39 +25,55 @@ void _init_int_list(struct _int_list* l){
 }
 
 
-struct _int_list _copy(struct _int_list* l){
-	struct _int_list new_list;
-	new_list.size = l->size;
-	if(l->size == l->MAX_SIZE){
-		new_list.list = malloc(sizeof(int) * 2 * l->MAX_SIZE);
-		if(l->front < l->back){
-			memcpy((void *) new_list.list, l->list, sizeof(int) * l->size);
-		} else {
-			int num_tailing = l->MAX_SIZE - l->front;
-			memcpy((void *) new_list.list, l->list + l->front, sizeof(int) * num_tailing);
-			memcpy((void *) new_list.list + num_tailing, l->list, sizeof(int) * (l->back+1));
-		}
-	} else {
-		new_list.list = malloc(sizeof(int) * l-> MAX_SIZE);
-		memcpy((void *) new_list.list, l->list, l->MAX_SIZE);
-	}
+struct _int_list *_copy(struct _int_list* l){
+	struct _int_list *new_list = malloc(sizeof(struct _int_list));
+        if(l->front <= l->back){
+                memcpy((void *) new_list->list, l->list, sizeof(int) * l->size);
+        } else {
+                int num_tailing = l->MAX_SIZE - l->front;
+                memcpy((void *) new_list->list, l->list + l->front, sizeof(int) * num_tailing);
+                memcpy((void *) new_list->list + num_tailing, l->list, sizeof(int) * (l->back+1));
+        }
+	new_list->size = l->size;
+	new_list->MAX_SIZE = l->MAX_SIZE;
+        new_list->front = 0;
+        new_list->back = l->size;
 	return new_list;
 }
 
-struct _int_list _add_back(int e, struct _int_list* l){
-	struct _int_list new_list = _copy(l);
+void _increase_list_size(struct _int_list* l) {
+        int *temp = malloc(sizeof(int) * l->MAX_SIZE);
+        if(l->front <= l->back){
+                memcpy((void *) temp, l->list, sizeof(int) * l->size);
+        } else {
+                int num_tailing = l->MAX_SIZE - l->front;
+                memcpy((void *) temp, l->list + l->front, sizeof(int) * num_tailing);
+                memcpy((void *) temp + num_tailing, l->list, sizeof(int) * (l->back+1));
+        }
+        l->MAX_SIZE = 2 * l->MAX_SIZE;
+        l->list = malloc(sizeof(int) * l->MAX_SIZE);
+        memcpy((void *) l->list, temp, sizeof(int) * l->size);
+        l->front = 0;
+        l->back = l->size;
+        free(temp);
+}
+
+void _add_back(int e, struct _int_list* l){
+	if(l->size == l->MAX_SIZE){
+                _increase_list_size(l);
+        }
 	l->list[l->back] =  e;
 	l->back = (l->back + 1) % l->MAX_SIZE;
 	l->size++;
-	return new_list;
 }
 
-struct _int_list _add_front(int e, struct _int_list* l){
-	struct _int_list new_list = _copy(l);
+void _add_front(int e, struct _int_list* l){
+	if(l->size == l->MAX_SIZE){
+                _increase_list_size(l);
+        }
 	l->front = (l->front == 0 ? l->MAX_SIZE - 1 : l->front - 1);
 	l->list[l->front] = e;
 	l->size++;
-	return new_list;
 }
 
 int _get(int idx, struct _int_list* l){
