@@ -1,0 +1,11 @@
+int main()
+{
+  list <int> test = [1, 2, 3];
+
+  int i;
+  for (i=0; i < 3; i=i+1) {
+    print_int_newline(test[i]);
+  }
+
+  return 0;
+}
