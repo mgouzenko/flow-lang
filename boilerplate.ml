@@ -82,7 +82,7 @@ int _get(int idx, struct _int_list* l){
 		exit(1);
 	}
 
-	return l->list[l->front + idx];
+	return l->list[(l->front + idx) % l->MAX_SIZE];
 }
 
  #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
