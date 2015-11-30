@@ -151,6 +151,18 @@ let string_of_actual_list actual_list =
         (string_of_type (snd (List.hd actual_list))) (List.tl actual_list)
 in
 
+(* Should get consolidated *)
+let built_in_funcs = [
+    { name = "print_string"; param_types = [String]; ret_type = Void; };
+    { name = "print_int"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char"; param_types = [Char]; ret_type = Void; };
+    { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
+    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
+    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; };
+    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; };
+    { name = "len"; param_types = [List(Int); List(Char); List(String); List(Double)]; ret_type = Int; } ]
+in
+
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
     try
         (* Attempt to find the function in the current environment *)
@@ -167,13 +179,25 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
 
         (* Get the types of the arguments supplied to the function. These
          * should be the same as the argument types aggregated from
-         * the entry. *)
-        if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
-        then raise (Failure("Incorrect paramater types for function call " ^ name ^
-                            ". param types: " ^ string_of_type_list f_entry.param_types ^
-                            ". actual types: " ^ string_of_actual_list actual_list))
-        else
-          TFunctionCall(name, actual_list), f_entry.ret_type
+         * the entry.*) 
+        if List.exists (fun built_in -> name = built_in.name) built_in_funcs
+        then
+           (* If it is a built in function, check that actual list types are in
+            * set of funciton param types. *)
+            let actual_list_types = List.map (fun texp -> let e, t = texp in t) actual_list
+            in
+            if List.for_all (fun b -> b = true ) (List.map (fun actual_list_type ->
+                         (List.exists (fun allowed_type -> actual_list_type =
+                         allowed_type) param_types)) actual_list_types)
+            then TFunctionCall(name, actual_list), f_entry.ret_type
+            else raise (Failure("Bad argument type for built in function " ^ name))
+        else 
+           (* If not a built in function, it should be one to one match.*)
+            if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
+            then raise (Failure("Incorrect paramater types for function call " ^ name ^
+                                ". param types: " ^ string_of_type_list f_entry.param_types ^
+                                ". actual types: " ^ string_of_actual_list actual_list))
+            else TFunctionCall(name, actual_list), f_entry.ret_type
     with Not_found -> raise (Failure("Undeclared function " ^ name)) in
 
 (* Expressions never return a new environment since they can't mutate the
@@ -410,19 +434,6 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
     | StructDecl(sdecl) ->
           let new_env, checked_sdecl = check_struct_declaration env sdecl in
           (new_env, SStructDecl(checked_sdecl)) in
-
-(* Should get consolidated *)
-let built_in_funcs = [
-    { name = "print_string"; param_types = [String]; ret_type = Void; };
-    { name = "print_int"; param_types = [Int]; ret_type = Void; };
-    { name = "print_char"; param_types = [Char]; ret_type = Void; };
-    { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
-    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
-    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; };
-    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; };
-    (* TODO: len should work with lists of non integer types *) 
-    { name = "len"; param_types = [List(Int)]; ret_type = Int; } ]
-in
 
 (* Here, we set up the initial environment. The return type is None, meaning
  * that we have yet to descend into semantically analyzing functions. The
