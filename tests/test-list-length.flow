@@ -1,0 +1,14 @@
+int main()
+{
+  list <int> test;
+  test::1;
+  test::2;
+  test::3;
+  test::4;
+  test::5;
+  test::6;
+
+  int length = len(test);
+  print_int_newline(length);
+  return 0;
+}

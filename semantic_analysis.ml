@@ -419,7 +419,9 @@ let built_in_funcs = [
     { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
     { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
     { name = "print_char_newline"; param_types = [Char]; ret_type = Void; };
-    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; } ]
+    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; };
+    (* TODO: len should work with lists of non integer types *) 
+    { name = "len"; param_types = [List(Int)]; ret_type = Int; } ]
 in
 
 (* Here, we set up the initial environment. The return type is None, meaning

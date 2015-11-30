@@ -97,6 +97,7 @@ let compile (program : s_program) =
             | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_char_newline" -> "printf(\"%c\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_double_newline" -> "printf(\"%G\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "len" -> expr_list_to_string expr_list ^ ".size"
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
