@@ -1,6 +1,6 @@
 int main() 
 {
-  print_int(3*4+10/2);
+  print(3*4+10/2);
 
   return 0;
 }

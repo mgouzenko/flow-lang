@@ -2,7 +2,7 @@ int main()
 {
   int i = 0;
   while (i < 4) {
-    print_int_newline(i);
+    println(i);
     i = i + 1;
   }
   return 0;

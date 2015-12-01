@@ -9,6 +9,6 @@ int main()
   test::6;
 
   int length = len(test);
-  print_int_newline(length);
+  println(length);
   return 0;
 }

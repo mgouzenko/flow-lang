@@ -8,7 +8,7 @@ proc tokenGen(out double ochan, double token) {
 
 proc printer(in double chan) {
   while(chan) {
-    print_double_newline(@chan);
+    println(@chan);
   }
 }
 

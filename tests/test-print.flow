@@ -1,4 +1,6 @@
 int main () {
+  println(8);
+  println("hey");
   print_int(2*3+4);
   print_string("\n");
   print_string("hello");

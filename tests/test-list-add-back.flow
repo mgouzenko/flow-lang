@@ -10,7 +10,7 @@ int main()
 
   int i;
   for (i=0; i < 6; i=i+1) {
-    print_int_newline(test[i]);
+    println(test[i]);
   }
 
   return 0;
