@@ -155,13 +155,6 @@ in
 let built_in_funcs = [
     { name = "print"; param_types = [Int; Double; Char; String]; ret_type = Void;};
     { name = "println"; param_types = [Int; Double; Char; String]; ret_type = Void;};
-    { name = "print_string"; param_types = [String]; ret_type = Void; };
-    { name = "print_int"; param_types = [Int]; ret_type = Void; };
-    { name = "print_char"; param_types = [Char]; ret_type = Void; };
-    { name = "print_string_newline"; param_types = [String]; ret_type = Void; };
-    { name = "print_int_newline"; param_types = [Int]; ret_type = Void; };
-    { name = "print_char_newline"; param_types = [Char]; ret_type = Void; };
-    { name = "print_double_newline"; param_types = [Double]; ret_type = Void; };
     { name = "len"; param_types = [List(Int); List(Char); List(String); List(Double)]; ret_type = Int; } ]
 in
 

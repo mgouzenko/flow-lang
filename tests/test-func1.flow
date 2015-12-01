@@ -3,5 +3,5 @@ int add(int a, int b) {
 }
 
 int main() {
-  print_int(add(3,4));
+  println(add(3,4));
 }
