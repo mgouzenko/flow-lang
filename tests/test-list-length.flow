@@ -8,7 +8,7 @@ int main()
   test::5;
   test::6;
 
-  int length = len(test);
+  int length = #test;
   print_int(length);
   println();
   return 0;

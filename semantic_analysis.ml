@@ -175,27 +175,12 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
               | _ -> p_type))
             f_entry.param_types in
 
-        (* Get the types of the arguments supplied to the function. These
-         * should be the same as the argument types aggregated from
-         * the entry.*) 
-        if List.exists (fun built_in -> name = built_in.name) built_in_funcs
-        then
-           (* If it is a built in function, check that actual list types are in
-            * set of funciton param types. *)
-            let actual_list_types = List.map (fun texp -> let e, t = texp in t) actual_list
-            in
-            if List.for_all (fun b -> b = true ) (List.map (fun actual_list_type ->
-                         (List.exists (fun allowed_type -> actual_list_type =
-                         allowed_type) param_types)) actual_list_types)
-            then TFunctionCall(name, actual_list), f_entry.ret_type
-            else raise (Failure("Bad argument type for built in function " ^ name))
-        else 
-           (* If not a built in function, it should be one to one match.*)
-            if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
-            then raise (Failure("Incorrect paramater types for function call " ^ name ^
-                                ". param types: " ^ string_of_type_list f_entry.param_types ^
-                                ". actual types: " ^ string_of_actual_list actual_list))
-            else TFunctionCall(name, actual_list), f_entry.ret_type
+        (* If not a built in function, it should be one to one match.*)
+        if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
+        then raise (Failure("Incorrect paramater types for function call " ^ name ^
+                            ". param types: " ^ string_of_type_list f_entry.param_types ^
+                            ". actual types: " ^ string_of_actual_list actual_list))
+        else TFunctionCall(name, actual_list), f_entry.ret_type
     with Not_found -> raise (Failure("Undeclared function " ^ name)) in
 
 (* Expressions never return a new environment since they can't mutate the
