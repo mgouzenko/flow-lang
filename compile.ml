@@ -46,7 +46,7 @@ let compile (program : s_program) =
           | Times -> exp1 ^ "*" ^ exp2
           | Divide -> exp1 ^ "/" ^ exp2
           | Modulo -> exp1 ^ "%" ^ exp2
-          | Eq -> exp1 ^ "==" ^ exp2
+          | Eq -> exp1 ^ "==" ^ exp2 (*TODO pattern match against string type so string comparison can be done*)
           | Neq -> exp1 ^ "!=" ^ exp2
           | Lt -> exp1 ^ "<" ^ exp2
           | Gt -> exp1 ^ ">" ^ exp2
