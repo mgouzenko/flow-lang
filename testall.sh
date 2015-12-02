@@ -48,6 +48,13 @@ Run() {
     }
 }
 
+RunFail() {
+    echo $* 1>&2
+    eval $* || {
+      return 1
+    }
+}
+
 Check() {
     error=0
     basename=`echo $1 | sed 's/.*\\///
@@ -62,15 +69,45 @@ Check() {
 
     generatedfiles=""
 
-    # generatedfiles="$generatedfiles ${basename}.i.out" &&
-    # Run "$FLOWC" "-i" "<" $1 ">" ${basename}.i.out &&
-    # Compare ${basename}.i.out ${reffile}.out ${basename}.i.diff
-
     generatedfiles="$generatedfiles ${basename}.c" &&
     Run "$FLOWC" "-c" $1 ">" ${basename}.c &&
     gcc ${basename}.c  &&
-    ./a.out > ${basename}.c.out
+    ./a.out > ${basename}.c.out 
     Compare ${basename}.c.out ${reffile}.out ${basename}.c.diff
+
+    # Report the status and clean up the generated files
+
+    if [ $error -eq 0 ] ; then
+      if [ $keep -eq 0 ] ; then
+        rm -f $generatedfiles
+      fi
+      echo "OK"
+      echo "###### SUCCESS" 1>&2
+    else
+      echo "###### FAILED" 1>&2
+      globalerror=$error
+    fi
+}
+
+CheckFail() {
+    error=0
+    basename=`echo $1 | sed 's/.*\\///
+                             s/.flow//'`
+    reffile=`echo $1 | sed 's/.flow$//'`
+    basedir="`echo $1 | sed 's/\/[^\/]*$//'`/."
+
+    echo -n "$basename..."
+
+    echo 1>&2
+    echo "###### Testing $basename" 1>&2
+
+    generatedfiles=""
+
+    if generatedfiles="$generatedfiles ${basename}.c" && RunFail "$FLOWC" "-c" $1 "2>" ${basename}.errorMsg; then
+      echo "This is not the expected result."
+    else
+      Compare ${basename}.errorMsg ${reffile}.out ${basename}.errorMsg.diff
+    fi
 
     # Report the status and clean up the generated files
 
@@ -105,7 +142,7 @@ if [ $# -ge 1 ]
 then
     files=$@
 else
-    files="tests/test-*.flow"
+    files="tests/fail-*.flow tests/test-*.flow"
 fi
 
 for file in $files
