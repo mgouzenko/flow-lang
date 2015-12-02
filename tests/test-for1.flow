@@ -2,7 +2,8 @@ int main()
 {
   int i;
   for(i = 0; i < 4; i = i+1){
-    println(i);
+    print_int(i);
+    println();
   }
  return 0;
 }

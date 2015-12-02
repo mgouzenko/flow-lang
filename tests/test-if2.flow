@@ -1,9 +1,13 @@
 int main()
 {
   if (false) { 
-    print(30);
-  } else println(5);
+    print_int(30);
+    println();
+  } else { 
+    print_int(5);
+    println();
+    }
   
-  print(10);
+  print_int(10);
   return 0;
 }
