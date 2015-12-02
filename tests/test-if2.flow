@@ -1,8 +1,8 @@
 int main()
 {
   if (false) { 
-    print(30);
-  } else println(5);
+    print_int_newline(30);
+  } else print_int_newline(5);
   
   print(10);
   return 0;

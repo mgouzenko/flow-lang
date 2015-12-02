@@ -1,7 +1,7 @@
 int main()
 {
   if (true) { 
-    println(10);
+    print_int_newline(10);
   }
   
   print(5);

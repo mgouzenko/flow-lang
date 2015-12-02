@@ -111,6 +111,13 @@ let compile (program : s_program) =
             match id with
               "print" -> translate_print expr_list false 
             | "println" -> translate_print expr_list true 
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_int_newline" -> "printf(\"%d\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_char_newline" -> "printf(\"%c\\n\", " ^ expr_list_to_string expr_list ^ ")" 
+            | "print_double_newline" -> "printf(\"%G\\n\", " ^ expr_list_to_string expr_list ^ ")" 
             | "len" -> expr_list_to_string expr_list ^ ".size"
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
