@@ -157,8 +157,7 @@ let built_in_funcs = [
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
     { name = "print_char"; param_types = [Char]; ret_type = Void; };
     { name = "print_double"; param_types = [Double]; ret_type = Void; };
-    { name = "println"; param_types = []; ret_type = Void;};
-    { name = "len"; param_types = [List(Int); List(Char); List(String); List(Double)]; ret_type = Int; } ]
+    { name = "println"; param_types = []; ret_type = Void;}; ]
 in
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
