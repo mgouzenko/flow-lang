@@ -1,0 +1,67 @@
+proc add (in int a, in int b, out int result) {
+	while(a && b) {
+		@a + @b -> result;
+	}
+	poison result;
+}
+
+proc delay(int n, in int ichan, out int ochan) {
+	n -> ochan;
+	while(ichan) {
+		@ichan -> ochan;
+	}
+	poison ochan;
+}
+
+proc limit(in int ichan, out int ochan, int limit) {
+	int count = 0;
+	while(ichan) {
+		count = count + 1;
+		if(count <= limit) {
+			@ichan -> ochan;
+		}
+		else {
+			poison ochan;
+			break;
+		}
+	}
+}
+
+proc split(in int ichan, out int out1, out int out2, out int out3) {
+	while(ichan) {
+		int input_val = @ichan;
+		//input_val -> out1 -> out2 -> out3; // we can only do this if we change _enqueue to return what was enqueued.
+
+		input_val -> out1;
+		input_val -> out2;
+		input_val -> out3;
+	}
+
+	poison out1;
+	poison out2;
+	poison out3;
+}
+
+proc printer(in int fib) {
+	while(fib) {
+		print_int(@fib);
+		println();
+	}
+}
+
+int main() {
+	channel<int> a;
+	channel<int> b;
+	channel<int> c;
+	channel<int> d;
+	channel<int> e;
+	channel<int> f;
+	channel<int> g;
+
+	add(c, f, a);
+	delay(1, a, b);
+	limit(b, g, 10);
+	split(g, c, d, e);
+	delay(0, e, f);
+	printer(d);
+}

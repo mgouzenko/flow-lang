@@ -21,6 +21,7 @@
 
 %nonassoc NOELSE /* dummy variable for lowest precedence */
 %nonassoc ELSE
+%left WRITE_CHANNEL
 %right ASSIGN
 %left AND OR
 %left EQ NEQ
@@ -28,7 +29,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS CONCAT
 %left TIMES DIVIDE MODULO
-%left WRITE_CHANNEL READ_CHANNEL
+%left READ_CHANNEL
 %left DOT
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
