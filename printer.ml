@@ -39,6 +39,7 @@ let print_string_of_unop op =
         | Negate   -> "-"
         | Not      -> "!" 
         | ListLength -> "#" 
+        | ListTail -> "^"
           in
     print_dot_node opstring
 
@@ -55,11 +56,6 @@ let rec print_string_of_expr = function
           in let _ = List.iter (function enode -> print_dot_edge arrinitnode enode) 
                                 enodes 
           in arrinitnode
-  | ListElement(name, idx) -> 
-          let arrelemnode = print_dot_node name
-          in let idxnode = print_string_of_expr idx
-          in let _ = print_dot_edge arrelemnode idxnode ~desc: "index"
-          in arrelemnode 
   | Id(s) -> print_dot_node s
   | BinOp(e1, op, e2) ->
           let num1 = print_string_of_expr e1

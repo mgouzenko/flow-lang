@@ -14,7 +14,6 @@ and expr_details =
   | TDoubleLiteral of float
   | TStructInitializer of s_dot_initializer list
   | TListInitializer of typed_expr list
-  | TListElement of string * typed_expr
   | TId of string
   | TBinOp of typed_expr * bin_op * typed_expr
   | TUnaryOp of unary_op * typed_expr

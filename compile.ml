@@ -3,7 +3,7 @@ open Sast;;
 open Boilerplate;;
 
 let supported_channels = [Int; Char; Double]
-let supported_lists = [Int; ]
+let supported_lists = [Int; Char; Double]
 
 let compile (program : s_program) =
 
@@ -25,7 +25,7 @@ let compile (program : s_program) =
       | List(t) ->
               (try
                   let _ = List.find (fun e -> t = e) supported_lists in
-                  "struct _" ^ translate_type t ^ "_list "
+                  "struct _cell *"
               with Not_found -> raise (Failure("List not supported"))) in
 
     (* Check that && and || for channels use _wait_for_more *)
@@ -59,11 +59,7 @@ let compile (program : s_program) =
                   exp1 ^ ", " ^ exp2 ^ "," ^
                   translate_type t1 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
-          | Concat ->
-                  match (t1, t2) with
-                    | List(t), _ -> "_add_back(" ^ exp2 ^ ", &" ^ exp1 ^ ")"
-                    | _, List(t) -> "_add_front(" ^ exp1 ^ ", &" ^ exp2 ^ ")"
-                    | _, _ -> raise(Failure("Invalid concatenation"))
+          | Concat -> "_add_front( (union _payload) " ^ exp1 ^ ", " ^ exp2 ^ ")"
         in
 
         let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
@@ -75,9 +71,17 @@ let compile (program : s_program) =
           | Retrieve ->
                   (match snd typed_expr with (* TODO: We may be able to remove this pattern match *)
                       Channel(t, dir) ->
-                          "CALL_DEQUEUE_FUNC(" ^ translate_expr typed_expr ^ "," ^ translate_type t ^ ")"
+                          "CALL_DEQUEUE_FUNC(" ^ exp ^ "," ^ translate_type t ^ ")"
+                    | List(t) ->
+                            let type_to_union_element = (function
+                                Int -> "_int"
+                              | Double -> "_double"
+                              | Char -> "_char"
+                              | _ -> "" (* Todo *) ) in
+                            "_get_front(" ^ exp ^ ")." ^ type_to_union_element t
                     | _ -> raise(Failure("Invalid type")))
-          | ListLength -> exp ^ ".size"
+          | ListLength -> "_get_length(" ^ exp ^ ")"
+          | ListTail -> "_get_tail(" ^ exp ^ ")"
         in
         let translate_bool b =
           match b with
@@ -121,7 +125,6 @@ let compile (program : s_program) =
         | TStructInitializer(dot_initializer_list), _ -> "TODO"
         (* TODO need to work on initializing list with add_back and front *)
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
-        | TListElement(id, expr), _ -> "_get(" ^ translate_expr expr ^ ", &" ^ id ^ ")"
         | TNoexpr, _ -> ""
 
     in
@@ -143,7 +146,17 @@ let compile (program : s_program) =
                  "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
           | List(t) ->
                   if is_arg then ""
-                  else ";\n_init_int_list(&" ^ vdecl.s_declaration_id ^ ")"
+                  else let add_fronts =
+                      (match fst vdecl.s_declaration_initializer with
+                            TListInitializer(expr_list) ->
+                                List.map (fun expr ->
+                                    vdecl.s_declaration_id ^ " = _add_front( (union _payload)" ^
+                                    translate_expr expr ^ "," ^ vdecl.s_declaration_id ^ ")" )
+                                expr_list
+                          | TNoexpr -> [""]
+                          | _ -> raise(Failure("Invalid list initializer"))) in
+                  "= NULL; " ^ String.concat ";\n" add_fronts
+
           | _ ->
                 (match vdecl.s_declaration_initializer with
                     TNoexpr, _ -> ""

@@ -66,7 +66,8 @@ let string_of_unop = function
     | Retrieve -> "@"
     | Negate -> "-"
     | Not -> "!"
-    | ListLength -> "#" in
+    | ListLength -> "#"
+    | ListTail -> "^" in
 
 let rec string_of_type = function
       Int ->  "int"
@@ -113,19 +114,18 @@ let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
                     | _ -> raise (Invalid_argument("Invalid write to channel")))
         | Concat ->
                 match (t1, t2) with
-                    List(t), _ -> if t = t2 then TBinOp(e1, op, e2), t1
-                                  else raise(Failure("Type mismatch for concatenation"))
                   | _, List(t) -> if t = t1 then TBinOp(e1, op, e2), t2
-                                  else raise(Failure("Type mismatch for concatenation"))
-                  | _, _ -> raise(Failure("Concatenation is only valid for a list and element")) in
+                                  else raise(Failure("Type mismatch for list operation."))
+                  | _, _ -> raise(Failure("Can only concat to front of list.")) in
 
 let check_unop (e : typed_expr) (op : unary_op) : typed_expr =
   let _, t = e in
   match op with
-    Retrieve ->
+      Retrieve ->
         (match t with
             (* Only In channels can be operated on by @ operator. *)
             Channel(t, In) -> TUnaryOp(op, e), t
+          | List(list_type) -> TUnaryOp(op, e), list_type
           | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
                                          " not compatible with " ^
                                          string_of_type t)))
@@ -143,7 +143,12 @@ let check_unop (e : typed_expr) (op : unary_op) : typed_expr =
               | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
                                              " not compatible with " ^
                                               string_of_type t)) )
-
+    | ListTail ->
+            (match t with
+                List(_) -> TUnaryOp(op, e), t
+              | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
+                                             " not compatible with " ^
+                                              string_of_type t)) )
     | Not ->
             (* Channels and such can be operated on by the negation operator *)
             if is_logical e then TUnaryOp(op, e), Bool
@@ -215,26 +220,14 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
       (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ListInitializer(expr_list) ->
-        let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
-        let list_type = snd(List.hd checked_expr_list) in 
-        let of_same_type =
+         let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
+         let list_type = snd(List.hd checked_expr_list) in
+         let of_same_type =
             List.for_all
-            (fun e -> (match snd(e) with
-                list_type -> true
-              | _ -> false))
+            (fun e -> if snd e = list_type then true else false)
             checked_expr_list in
-        if of_same_type then TListInitializer(checked_expr_list), List(list_type)
-        else raise(Failure("List must be initialized with expressions of the same type"))
-    | ListElement(id, e) ->
-            let id_type = (try find_variable_type env.symbol_table id
-            with Not_found -> raise (Failure("Undeclared identifier " ^ id))) in
-                (match id_type with
-                    List(list_type) ->
-                        let index_exp = check_expr env e in
-                        if snd index_exp = Int
-                        then TListElement(id, index_exp), list_type
-                        else raise (Failure("List index must evaluate to integer type"))
-                  | _ -> raise (Failure("Identifier is not a list.")))
+         if of_same_type then TListInitializer(checked_expr_list), List(list_type)
+         else raise(Failure("List must be initialized with expressions of the same type"))
     | UnaryOp(unary_op, e) ->
         let checked_expr = check_expr env e
         in check_unop checked_expr unary_op

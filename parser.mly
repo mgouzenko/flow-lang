@@ -2,7 +2,7 @@
 
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE MODULO ASSIGN CONCAT
-%token WRITE_CHANNEL READ_CHANNEL PROC CHANNEL IN OUT
+%token WRITE_CHANNEL RETRIEVE PROC CHANNEL IN OUT
 %token DOT
 %token BREAK CONTINUE VOID
 %token POISON
@@ -10,7 +10,7 @@
 %token DOUBLE CHAR BOOL INT STRING LIST STRUCT
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
-%token LENGTH
+%token LIST_LENGTH LIST_HEAD LIST_TAIL
 %token <int> INT_LITERAL
 %token <float> DOUBLE_LITERAL
 %token <char> CHAR_LITERAL
@@ -29,7 +29,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS CONCAT
 %left TIMES DIVIDE MODULO
-%left READ_CHANNEL
+%left WRITE_CHANNEL RETRIEVE
 %left DOT
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
@@ -180,10 +180,9 @@ expr:
   | CHAR_LITERAL {CharLiteral($1)}
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
-  | IDENTIFIER LBRACKET expr RBRACKET { ListElement($1, $3) }
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
   | LBRACKET expr_list RBRACKET {ListInitializer($2)}
-  | READ_CHANNEL IDENTIFIER {UnaryOp(Retrieve, Id($2))}
+  | RETRIEVE IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
   | expr CONCAT expr {BinOp($1, Concat, $3)}
@@ -204,7 +203,8 @@ expr:
   | LPAREN expr RPAREN {$2}
   | NOT expr %prec UNARY_OP {UnaryOp(Not, $2)}
   | MINUS expr %prec UNARY_OP { UnaryOp(Negate, $2) }
-  | LENGTH expr %prec UNARY_OP { UnaryOp(ListLength, $2)}
+  | LIST_LENGTH expr %prec UNARY_OP { UnaryOp(ListLength, $2)}
+  | LIST_TAIL expr %prec UNARY_OP { UnaryOp(ListTail, $2)}
 
 function_call:
     IDENTIFIER LPAREN RPAREN {FunctionCall($1, [])}

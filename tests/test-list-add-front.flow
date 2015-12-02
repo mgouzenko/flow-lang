@@ -1,15 +1,14 @@
 int main()
 {
-  list <int> test;
-  1::test;
-  2::test;
-  3::test;
-  4::test;
-  5::test;
+  list<int> test;
+  test = 1::test;
+  test = 2::test;
+  test = 3::test;
 
   int i;
-  for (i=0; i < 5; i=i+1) {
-    print_int(test[i]);
+  for (i=0; i < 3; i=i+1) {
+    print_int(@test);
+	test = ^test;
     println();
   }
 

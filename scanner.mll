@@ -3,7 +3,7 @@
 (* Definitions *)
 
 let digit = ['0'-'9']
-let double = ((digit+ '.' digit*) | ('.' digit+))  
+let double = ((digit+ '.' digit*) | ('.' digit+))
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -22,7 +22,8 @@ rule token = parse
 | '*'           { TIMES }
 | '/'           { DIVIDE }
 | '='           { ASSIGN }
-| '#'			{ LENGTH }
+| '#'			{ LIST_LENGTH }
+| "^"           { LIST_TAIL }
 | "=="          { EQ }
 | "!="          { NEQ }
 | '<'           { LT }
@@ -33,7 +34,7 @@ rule token = parse
 | "||"          { OR }
 | "&&"          { AND }
 | '%'           { MODULO }
-| '@'           { READ_CHANNEL }
+| '@'           { RETRIEVE }
 | "->"          { WRITE_CHANNEL }
 | "::"          { CONCAT }
 | "if"          { IF }

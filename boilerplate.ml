@@ -7,83 +7,57 @@ let boilerplate_header =
  #include <stdbool.h>
  #include <string.h>
 
-
-int INIT_SIZE = 4;
-
-struct _int_list{
-	int front;
-	int back;
-	int MAX_SIZE;
-	int size;
-	int *list;
+union _payload{
+	int _int;
+	double _double;
+	char _char;
+	void * _cell;
 };
 
-void _init_int_list(struct _int_list* l){
-	l->list = malloc(sizeof(int) * INIT_SIZE);
-	l->MAX_SIZE = INIT_SIZE;
-	l->size = l->front = l->back = 0;
+struct _cell {
+	struct _cell *next;
+	union _payload data;
+	int references;
+	int length;
+};
+
+struct _cell* _add_front(union _payload element, struct _cell *tail){
+	struct _cell *new_cell = malloc(sizeof(struct _cell));
+	new_cell->references = 1;
+	new_cell->data = element;
+	new_cell->next = tail;
+    if(!tail)
+        new_cell->length = 1;
+    else {
+        new_cell->length = tail->length + 1;
+        tail->references++;
+    }
+	return new_cell;
 }
 
-
-struct _int_list *_copy(struct _int_list* l){
-	struct _int_list *new_list = malloc(sizeof(struct _int_list));
-        if(l->front <= l->back){
-                memcpy((void *) new_list->list, l->list, sizeof(int) * l->size);
-        } else {
-                int num_tailing = l->MAX_SIZE - l->front;
-                memcpy((void *) new_list->list, l->list + l->front, sizeof(int) * num_tailing);
-                memcpy((void *) new_list->list + num_tailing, l->list, sizeof(int) * (l->back+1));
-        }
-	new_list->size = l->size;
-	new_list->MAX_SIZE = l->MAX_SIZE;
-        new_list->front = 0;
-        new_list->back = l->size;
-	return new_list;
-}
-
-void _increase_list_size(struct _int_list* l) {
-        int *temp = malloc(sizeof(int) * l->MAX_SIZE);
-        if(l->front <= l->back){
-                memcpy((void *) temp, l->list, sizeof(int) * l->size);
-        } else {
-                int num_tailing = l->MAX_SIZE - l->front;
-                memcpy((void *) temp, l->list + l->front, sizeof(int) * num_tailing);
-                memcpy((void *) temp + num_tailing, l->list, sizeof(int) * (l->back+1));
-        }
-        l->MAX_SIZE = 2 * l->MAX_SIZE;
-        l->list = malloc(sizeof(int) * l->MAX_SIZE);
-        memcpy((void *) l->list, temp, sizeof(int) * l->size);
-        l->front = 0;
-        l->back = l->size;
-        free(temp);
-}
-
-void _add_back(int e, struct _int_list* l){
-	if(l->size == l->MAX_SIZE){
-                _increase_list_size(l);
-        }
-	l->list[l->back] =  e;
-	l->back = (l->back + 1) % l->MAX_SIZE;
-	l->size++;
-}
-
-void _add_front(int e, struct _int_list* l){
-	if(l->size == l->MAX_SIZE){
-                _increase_list_size(l);
-        }
-	l->front = (l->front == 0 ? l->MAX_SIZE - 1 : l->front - 1);
-	l->list[l->front] = e;
-	l->size++;
-}
-
-int _get(int idx, struct _int_list* l){
-	if(idx > (l->size - 1)){
-		printf(\"Index out of bounds\");
+struct _cell* _get_tail(struct _cell* head){
+	if(!head){
+		printf(\"Runtime error: cannot get tail of empty list\");
 		exit(1);
 	}
 
-	return l->list[(l->front + idx) % l->MAX_SIZE];
+	return head->next;
 }
+
+union _payload _get_front(struct _cell* head){
+    if (!head) {
+        printf(\"Runtime error: cannot get head of empty list\");
+        exit(1);
+    }
+
+	return head->data;
+}
+
+int _get_length(struct _cell* head){
+	if(!head) return 0;
+	return head->length;
+}
+
 
  #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
                                int size; \

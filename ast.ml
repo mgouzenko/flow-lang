@@ -3,7 +3,7 @@ type bin_op =
       | Neq  | Lt    | Leq   | Gt     | Geq    | Eq
       | Send | And   | Or    | Assign | Concat
 
-type unary_op = Retrieve | Negate | Not | ListLength
+type unary_op = Retrieve | Negate | Not | ListLength | ListTail
 type direction = In | Out | Nodir
 
 (* All of the primitive and nonprimitive types *)
@@ -32,7 +32,6 @@ and expr =
   | DoubleLiteral of float
   | StructInitializer of dot_initializer list
   | ListInitializer of expr list
-  | ListElement of string * expr
   | Id of string
   | BinOp of expr * bin_op * expr
   | UnaryOp of unary_op * expr
