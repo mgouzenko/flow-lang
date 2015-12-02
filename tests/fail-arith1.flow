@@ -1,0 +1,6 @@
+int main() {
+  int a = 1;
+  string b = "hey";
+  int c = a + b;
+  return 0;
+}
