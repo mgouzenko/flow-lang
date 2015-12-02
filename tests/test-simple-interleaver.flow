@@ -5,7 +5,8 @@ proc tokenGen(out int ochan, int token) {
 
 proc printer(in int chan) {
   while(chan) {
-    print_int_newline(@chan);
+    print_int(@chan);
+    println();
   }
 }
 

@@ -1,7 +1,8 @@
 int main()
 {
   if (true) { 
-    print_int_newline(10);
+    print_int(10);
+    println();
   }
   
   print_int(5);

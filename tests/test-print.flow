@@ -1,8 +1,11 @@
 int main () {
   print_int(2*3+4);
-  print_string("\n");
+  println();
   print_string("hello");
-  int a = 3;
-  print_string("\n");
-  print_int(a);
+  double a = 3.3;
+  println();
+  print_double(a);
+  println();
+  print_char('c');
+
 }
