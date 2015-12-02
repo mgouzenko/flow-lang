@@ -73,10 +73,11 @@ let compile (program : s_program) =
             Not -> "!" ^ exp
           | Negate -> "-" ^ exp
           | Retrieve ->
-                  (match snd typed_expr with
+                  (match snd typed_expr with (* TODO: We may be able to remove this pattern match *)
                       Channel(t, dir) ->
                           "CALL_DEQUEUE_FUNC(" ^ translate_expr typed_expr ^ "," ^ translate_type t ^ ")"
                     | _ -> raise(Failure("Invalid type")))
+          | ListLength -> exp ^ ".size"
         in
         let translate_bool b =
           match b with

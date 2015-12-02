@@ -65,7 +65,8 @@ let string_of_binop = function
 let string_of_unop = function
     | Retrieve -> "@"
     | Negate -> "-"
-    | Not -> "!" in
+    | Not -> "!"
+    | ListLength -> "#" in
 
 let rec string_of_type = function
       Int ->  "int"
@@ -134,6 +135,15 @@ let check_unop (e : typed_expr) (op : unary_op) : typed_expr =
               | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
                                              " not compatible with " ^
                                              string_of_type t)))
+
+
+    | ListLength ->
+            (match t with
+                List(_) -> TUnaryOp(op, e), Int
+              | _ -> raise (Invalid_argument("operator " ^ string_of_unop op ^
+                                             " not compatible with " ^
+                                              string_of_type t)) )
+
     | Not ->
             (* Channels and such can be operated on by the negation operator *)
             if is_logical e then TUnaryOp(op, e), Bool

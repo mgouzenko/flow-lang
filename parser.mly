@@ -10,6 +10,7 @@
 %token DOUBLE CHAR BOOL INT STRING LIST STRUCT
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
+%token LENGTH
 %token <int> INT_LITERAL
 %token <float> DOUBLE_LITERAL
 %token <char> CHAR_LITERAL
@@ -202,6 +203,7 @@ expr:
   | LPAREN expr RPAREN {$2}
   | NOT expr %prec UNARY_OP {UnaryOp(Not, $2)}
   | MINUS expr %prec UNARY_OP { UnaryOp(Negate, $2) }
+  | LENGTH expr %prec UNARY_OP { UnaryOp(ListLength, $2)}
 
 function_call:
     IDENTIFIER LPAREN RPAREN {FunctionCall($1, [])}

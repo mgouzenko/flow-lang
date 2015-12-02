@@ -7,7 +7,7 @@ let double = ((digit+ '.' digit*) | ('.' digit+))
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
-| '#'           { comment lexbuf }           (* Comments *)
+| "//"           { comment lexbuf }           (* Comments *)
 | '.'           { DOT }
 | '('           { LPAREN }
 | ')'           { RPAREN }
@@ -22,6 +22,7 @@ rule token = parse
 | '*'           { TIMES }
 | '/'           { DIVIDE }
 | '='           { ASSIGN }
+| '#'			{ LENGTH }
 | "=="          { EQ }
 | "!="          { NEQ }
 | '<'           { LT }

@@ -38,7 +38,8 @@ let print_string_of_unop op =
     let opstring = match op with
           Retrieve -> "@"
         | Negate   -> "-"
-        | Not      -> "!" in
+        | Not      -> "!" 
+        | ListLength -> "#" in
     print_dot_node opstring
 
 let rec print_string_of_expr = function
