@@ -87,30 +87,9 @@ let compile (program : s_program) =
           List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
              (translate_expr (List.hd expr_list)) (List.tl expr_list)
         in
-
-        (* Prints a newline if true *)
-        let new_line_if_true (b: bool) = 
-          match b with 
-            true -> "\\n"
-          | false -> ""
-        in
-
-        (* Translate correct printf syntax based off type of expression *)
-        let translate_print (expr_list: typed_expr list) (print_newline: bool) : string =
-          let t = snd (List.hd expr_list) 
-          in match t with 
-            Int -> "printf(\"%d" ^ new_line_if_true print_newline ^ "\", " ^ expr_list_to_string expr_list ^ ")" 
-          | Double -> "printf(\"%G" ^ new_line_if_true print_newline ^ "\", " ^ expr_list_to_string expr_list ^ ")" 
-          | String -> "printf(\"%s" ^ new_line_if_true print_newline ^ "\", " ^ expr_list_to_string expr_list ^ ")" 
-          | Char -> "printf(\"%c" ^ new_line_if_true print_newline ^ "\", " ^ expr_list_to_string expr_list ^ ")" 
-          | _ -> ""
-        in
-
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
             match id with
-              "print" -> translate_print expr_list false 
-            | "println" -> translate_print expr_list true 
             | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ")" 
             | "print_string_newline" -> "printf(\"%s\\n\", "^ expr_list_to_string expr_list ^ ")"
             | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 

@@ -153,8 +153,6 @@ in
 
 (* Should get consolidated *)
 let built_in_funcs = [
-    { name = "print"; param_types = [Int; Double; Char; String]; ret_type = Void;};
-    { name = "println"; param_types = [Int; Double; Char; String]; ret_type = Void;};
     { name = "print_string"; param_types = [String]; ret_type = Void; };
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
     { name = "print_char"; param_types = [Char]; ret_type = Void; };

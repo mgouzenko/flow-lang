@@ -4,6 +4,6 @@ int main()
     print_int_newline(30);
   } else print_int_newline(5);
   
-  print(10);
+  print_int(10);
   return 0;
 }
