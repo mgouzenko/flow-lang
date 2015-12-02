@@ -29,7 +29,7 @@
 %right SHIFT_LEFT SHIFT_RIGHT
 %left PLUS MINUS CONCAT
 %left TIMES DIVIDE MODULO
-%left WRITE_CHANNEL RETRIEVE
+%left RETRIEVE
 %left DOT
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
