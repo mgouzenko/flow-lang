@@ -24,7 +24,7 @@ struct _cell {
 
 struct _cell* _add_front(union _payload element, struct _cell *tail){
 	struct _cell *new_cell = malloc(sizeof(struct _cell));
-	new_cell->references = 1;
+	new_cell->references = 0;
 	new_cell->data = element;
 	new_cell->next = tail;
     if(!tail)
@@ -43,6 +43,21 @@ struct _cell* _get_tail(struct _cell* head){
 	}
 
 	return head->next;
+}
+
+void _decrease_refs(struct _cell* head){
+    if(!head) return;
+    else if(head->references > 1)
+        head->references--;
+    else{
+        _decrease_refs(head->next);
+        free(head);
+    }
+}
+
+void _increase_refs(struct _cell* head){
+    if(head)
+        head->references++;
 }
 
 union _payload _get_front(struct _cell* head){

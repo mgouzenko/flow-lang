@@ -59,6 +59,13 @@ let compile (program : s_program) =
                   exp1 ^ ", " ^ exp2 ^ "," ^
                   translate_type t1 ^ ")"
           | Assign -> exp1 ^ "=" ^ exp2
+                  (* let assingment = exp1 ^ "=" ^ exp2 *)
+                  (* and dec_refs = "_decrease_refs(" ^ exp1 ^ ")" *)
+                  (* and inc_refs = "_increase_refs(" ^ exp2 ^ ")" in *)
+                  (* (match t1 with *)
+                  (*     List(_) -> String.concat "\n;"  *)
+
+
           | Concat -> "_add_front( (union _payload) " ^ exp1 ^ ", " ^ exp2 ^ ")"
         in
 
@@ -181,7 +188,25 @@ let compile (program : s_program) =
 
     let rec translate_stmt (stmt: s_stmt) =
         match stmt with
-            SExpr(e) -> translate_expr e ^ ";\n"
+            SExpr(e) ->
+                let translated_expr = translate_expr e ^ ";\n" in
+                (match fst e with
+                    (* This absurd match finds all list assignments *)
+                    TBinOp(e1, op, e2) when op = Assign
+                                       && (match snd e1 with
+                                              List(_) -> true
+                                            | _       -> false) ->
+                        let list_name = translate_expr e1 in
+                        let store_temp = "temp = " ^ list_name ^ ";\n" in
+                        let dec_stmt = "_decrease_refs(temp);\n"
+                        and inc_stmt = "_increase_refs(" ^ list_name ^ ");\n" in
+
+                        (* First decrease the references to the list, in
+                         * prep for reassignment. Then, do the reassignment.
+                         * Then, increase the references to the list, which
+                         * now points to a new cell after reassignment *)
+                        store_temp ^ translated_expr ^ inc_stmt ^ dec_stmt;
+                  | _ -> translated_expr)
           | SBlock(stmt_list) ->
                   "{\n" ^
                   String.concat "" (List.map translate_stmt stmt_list) ^
@@ -218,7 +243,8 @@ let compile (program : s_program) =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
             then "pthread_mutex_init(&_thread_list_lock, NULL);\n srand(time(NULL));\n", "_wait_for_finish();\n"
-            else "","" in
+            else "",""
+        and temp_list_decl = "struct _cell* temp;\n" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
             Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
@@ -228,7 +254,7 @@ let compile (program : s_program) =
         fdecl.s_function_name ^
         (match fdecl.s_return_type with
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
-          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^
+          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^ temp_list_decl ^
         String.concat "" (List.map translate_stmt fdecl.s_body) ^ closing_stmts ^ "\n}"
 
     (* Tranlsate flow struct declaration to c struct declaration *)
