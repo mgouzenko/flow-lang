@@ -6,6 +6,7 @@ let boilerplate_header =
  #include <stdlib.h>
  #include <stdbool.h>
  #include <string.h>
+ #include <time.h>
 
 union _payload{
 	int _int;

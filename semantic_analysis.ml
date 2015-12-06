@@ -35,7 +35,7 @@ let find_variable_type (symbol_table: symtab) (name : string) : flow_type =
 
 let is_logical (expr: typed_expr) : bool =
     match expr with
-          _, Int | _, Bool | _, Char | _, String -> true
+          _, Int | _, Bool | _, Char | _, String | _, Double -> true
         | _, Channel(t, dir) -> true
         | _ -> false in
 
@@ -172,7 +172,8 @@ let built_in_funcs = [
     { name = "print_int"; param_types = [Int]; ret_type = Void; };
     { name = "print_char"; param_types = [Char]; ret_type = Void; };
     { name = "print_double"; param_types = [Double]; ret_type = Void; };
-    { name = "println"; param_types = []; ret_type = Void;}; ]
+    { name = "println"; param_types = []; ret_type = Void;}; 
+    { name = "rand"; param_types = []; ret_type = Double}; ]
 in
 
 let check_function_call (name : string) (actual_list: typed_expr list) (env: environment) : typed_expr =
