@@ -1,0 +1,50 @@
+//double INITIAL_ZOO_POP = 100.0;
+//double INITIAL_WILD_POP = 1000.0;
+
+proc dirac_delta_dist(double center, int num_samples, out double destination) {
+  int i;
+  for (i = 0; i < num_samples; i=i+1){
+   center->destination;
+  }
+  poison destination;
+}
+
+
+proc animals(in double pdist, in double coming, out double leaving, out double pop, double curr_pop) {
+  double animals_leaving;
+  double animals_coming;
+  while(pdist) {
+    curr_pop -> pop;
+    animals_leaving = curr_pop * @pdist;     
+    animals_leaving -> leaving;
+    if (coming) { animals_coming = @coming; }
+    curr_pop = curr_pop + animals_coming - animals_leaving;
+  }
+  poison pop;
+}
+
+proc stat_printer(in double zoo_chan, in double wild_chan) {
+  while(zoo_chan && wild_chan){
+    print_string("zoo population: ");
+    print_double(@zoo_chan);
+    println();
+    print_string("wild population: ");
+    print_double(@wild_chan);
+    println();
+  }
+}
+
+int main() {
+  channel<double> zoo_pdist;
+  channel<double> zoo_leaving;
+  channel<double> zoo_coming;
+  channel<double> zoo_pop;
+  channel<double> wild_pdist;
+  channel<double> wild_pop;
+
+  dirac_delta_dist(0.1, 100, zoo_pdist);
+  dirac_delta_dist(0.01, 100, wild_pdist);
+  animals(zoo_pdist, zoo_coming, zoo_leaving, zoo_pop, 200.0); 
+  animals(wild_pdist, zoo_leaving, zoo_coming, wild_pop, 10000.0); 
+  stat_printer(zoo_pop, wild_pop); 
+}
