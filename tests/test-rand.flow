@@ -1,0 +1,9 @@
+int main() {
+  double r = rand();
+  if(r < 1.0 && r >=0) {
+    print_string("pass");
+  } else {
+    print_string("fail");
+  }
+  return 0;
+}

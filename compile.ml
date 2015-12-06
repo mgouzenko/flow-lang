@@ -101,6 +101,7 @@ let compile (program : s_program) =
             | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ")"
             | "println" ->  "printf(\"\\n\")"
             | "len" -> expr_list_to_string expr_list ^ ".size"
+            | "rand" -> " (double)rand() / (double)RAND_MAX "
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
@@ -216,7 +217,7 @@ let compile (program : s_program) =
     let translate_fdecl (fdecl : s_function_declaration) : string =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
-            then "pthread_mutex_init(&_thread_list_lock, NULL);\n", "_wait_for_finish();\n"
+            then "pthread_mutex_init(&_thread_list_lock, NULL);\n srand(time(NULL));\n", "_wait_for_finish();\n"
             else "","" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
