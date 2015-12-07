@@ -1,0 +1,22 @@
+proc numGen(out int ochan){
+  list <int> test = [1, 2, 3, 4, 5];
+
+  while(#test > 0) {
+    @test -> ochan;
+    test = ^test;
+  }
+  poison ochan;
+}
+
+proc sum(in int chan) {
+  while(chan) {
+    3 -> chan;
+    print_int(@chan);
+  }
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  sum(chan);
+}
