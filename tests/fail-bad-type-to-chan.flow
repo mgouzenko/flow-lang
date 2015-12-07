@@ -1,0 +1,19 @@
+// Should not be able to write char type to int channel
+
+proc numGen(out int ochan){
+  char c = 'a';
+  c -> ochan; // Fail
+  poison ochan;
+}
+
+proc sum(in int chan) {
+  while(chan) {
+    print_int(@chan);
+  }
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  sum(chan);
+}
