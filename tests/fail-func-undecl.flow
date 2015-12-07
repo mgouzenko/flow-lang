@@ -1,0 +1,16 @@
+// Should not be able to call a function that has not been declared
+
+
+int double_sum(int a, int b) {
+  int c = sum(a, b) + sum(a, b);
+  return c;
+}
+
+int sum(int a, int b) {
+  return a + b;
+}
+
+int main() {
+  numGen(chan);
+  sum(chan);
+}
