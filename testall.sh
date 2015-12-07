@@ -103,7 +103,7 @@ CheckFail() {
 
     generatedfiles=""
 
-    if generatedfiles="$generatedfiles ${basename}.c" && RunFail "$FLOWC" "-c" $1 "2>" ${basename}.errorMsg; then
+    if generatedfiles="$generatedfiles ${basename}.errorMsg" && RunFail "$FLOWC" "-c" $1 "2>" ${basename}.errorMsg; then
       echo "This is not the expected result."
     else
       Compare ${basename}.errorMsg ${reffile}.out ${basename}.errorMsg.diff
