@@ -1,3 +1,5 @@
+// Should not be able to write to an in channel
+
 proc numGen(out int ochan){
   list <int> test = [1, 2, 3, 4, 5];
 
@@ -10,7 +12,7 @@ proc numGen(out int ochan){
 
 proc sum(in int chan) {
   while(chan) {
-    3 -> chan;
+    3 -> chan;  // FAIL
     print_int(@chan);
   }
 }

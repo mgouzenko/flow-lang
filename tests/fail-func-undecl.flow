@@ -1,8 +1,7 @@
 // Should not be able to call a function that has not been declared
 
-
 int double_sum(int a, int b) {
-  int c = sum(a, b) + sum(a, b);
+  int c = sum(a, b) + sum(a, b); // FAIL
   return c;
 }
 

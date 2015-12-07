@@ -1,8 +1,10 @@
+// Should not be able to read from an out channel
+
 proc numGen(out int ochan){
   list <int> test = [1, 2, 3, 4, 5];
 
   while(#test > 0) {
-    int a = @ochan;
+    int a = @ochan; // FAIL
     test = ^test;
   }
   poison ochan;

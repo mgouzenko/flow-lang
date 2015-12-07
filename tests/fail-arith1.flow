@@ -1,6 +1,8 @@
+// Should not be able to add string to int
+
 int main() {
   int a = 1;
   string b = "hey";
-  int c = a + b;
+  int c = a + b; // FAIL
   return 0;
 }
