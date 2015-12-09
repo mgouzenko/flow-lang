@@ -1,0 +1,31 @@
+// Should be able to call a process within a process. Sum is called within shell.
+
+proc numGen(out int ochan){
+  list <int> test = [1, 2, 3, 4, 5];
+
+  while(#test > 0) {
+    @test -> ochan;
+    test = ^test;
+  }
+  
+  poison ochan;
+}
+
+proc sum(in int chan) {
+  int sum = 0;
+  while(chan) {
+    sum = sum + @chan;
+  }
+  print_int(sum);
+}
+
+// shell calls the sum proc 
+proc shell(in int chan) {
+  sum(chan);
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  shell(chan);
+}
