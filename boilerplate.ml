@@ -108,7 +108,7 @@ int _init_channel(struct _channel *channel){
   return 0;
 }
 
-#define MAKE_ENQUEUE_FUNC(type) void _enqueue_##type(type element, struct _##type##_channel *channel){ \
+#define MAKE_ENQUEUE_FUNC(type) type _enqueue_##type(type element, struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
     while(channel->size >= channel->MAX_SIZE) \
         pthread_cond_wait(&channel->write_ready, &channel->lock); \
@@ -119,6 +119,7 @@ int _init_channel(struct _channel *channel){
     channel->size++; \
     pthread_cond_signal(&channel->read_ready); \
     pthread_mutex_unlock(&channel->lock); \
+    return element;\
 }
 
 MAKE_ENQUEUE_FUNC(int)
