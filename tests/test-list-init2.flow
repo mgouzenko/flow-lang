@@ -1,0 +1,10 @@
+// Should init list in correct order
+
+int main() {
+  list <int> test = [1, 2, 3, 4, 5];
+  int head = @test;
+  print_int(head);
+  println();
+  list <int> tail = ^test; 
+  print_int(@tail);
+}
