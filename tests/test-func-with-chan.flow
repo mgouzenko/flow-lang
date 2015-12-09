@@ -1,0 +1,31 @@
+// Should be able to pass a channel into a function
+
+void send_to_chan(out int ochan, int a) {
+  a -> ochan;
+}
+
+proc numGen(out int ochan){
+  list <int> test = [1, 2, 3, 4, 5];
+
+  while(#test > 0) {
+    int a = @test;
+    send_to_chan(ochan, a);
+    test = ^test;
+  }
+  
+  poison ochan;
+}
+
+proc sum(in int chan) {
+  int sum = 0;
+  while(chan) {
+    sum = sum + @chan;
+  }
+  print_int(sum);
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  sum(chan);
+}
