@@ -1,0 +1,9 @@
+// Should not be able to put tail of char list into the initialization of int list 
+
+int main() {
+  list <int> test = [1, 2, 3, 4, 5];
+  int head = @test;
+  print_int(head);
+  println();
+  list <char> tail = ^test; // FAIL
+}

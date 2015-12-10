@@ -160,9 +160,11 @@ let compile (program : s_program) =
                                 List.map (fun expr ->
                                     vdecl.s_declaration_id ^ " = _add_front( (union _payload)" ^
                                     translate_expr expr ^ "," ^ vdecl.s_declaration_id ^ ")" )
-                                expr_list
+                                (List.rev expr_list)
+                          | TUnaryOp(ListTail, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
+                          | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name]
                           | TNoexpr -> [""]
-                          | _ -> raise(Failure("Invalid list initializer"))) in
+                          | _ -> raise(Failure("Invalid list initializer " ))) in
                   "= NULL; " ^ String.concat ";\n" add_fronts
 
           | _ ->

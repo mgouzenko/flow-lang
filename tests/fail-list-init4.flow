@@ -1,0 +1,6 @@
+// Should not be able to init list with list of differnt type
+
+int main() {
+  list <int> test1 = [2, 3];
+  list <double> test2 = test1;
+}

@@ -1,0 +1,5 @@
+// Should not be able to init list of type that does not match declaration
+
+int main() {
+  list <int> test = [5.2, 5.0]; // FAIL
+}

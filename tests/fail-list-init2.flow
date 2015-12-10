@@ -1,0 +1,5 @@
+// Should not be able to init list of differnt types
+
+int main() {
+  list <int> test = [1, 2, 3, 4, 5.0]; // FAIL
+}
