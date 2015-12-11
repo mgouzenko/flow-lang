@@ -1,0 +1,15 @@
+// Lists should be able to able to be initialized as
+
+void print_list(list<int> l) {
+  while(#l > 0) {
+    print_int(@l);
+    println();
+    l = ^l;
+  }
+}
+
+int main() {
+  list <int> test = [];
+  test1 = 1::test;
+  print_list(test);
+}
