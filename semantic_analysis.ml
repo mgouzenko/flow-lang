@@ -183,7 +183,7 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
 
         (* Get rid of channel directions, for the purpose of
          * parameter matching *)
-        let param_types =
+        let no_dir_param_types =
             List.map
             (fun p_type -> (match p_type with
                 Channel(ft, dir) -> Channel(ft, Nodir)
@@ -191,7 +191,8 @@ let check_function_call (name : string) (actual_list: typed_expr list) (env: env
             f_entry.param_types in
 
         (* If not a built in function, it should be one to one match.*)
-        if param_types <> (List.map (fun texp -> let e, t = texp in t) actual_list)
+        let actual_param_types = List.map (fun texp -> let e, t = texp in t) actual_list in
+        if no_dir_param_types <> actual_param_types && f_entry.param_types <> actual_param_types
         then raise (Failure("Incorrect paramater types for function call " ^ name ^
                             ". param types: " ^ string_of_type_list f_entry.param_types ^
                             ". actual types: " ^ string_of_actual_list actual_list))

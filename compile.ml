@@ -113,9 +113,11 @@ let compile (program : s_program) =
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
           let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
+          let malloced_args = "struct _" ^ id ^ "_args* _margs = malloc(sizeof(struct _" ^ id ^ "_args));\n" in
           let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
-          let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) &_args);\n" in 
-          "{\n" ^ pthread_decl ^ args_struct ^ pthread_creation ^ "\n}"
+          let copy_struct = "memcpy((void*) _margs, (void*) &_args, sizeof(typeof(_args)));\n" in
+          let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) _margs);\n" in
+          "{\n" ^ pthread_decl ^ malloced_args ^ args_struct ^ copy_struct ^ pthread_creation ^ "\n}"
         in
         match expr with
           TIntLiteral(i), _ -> string_of_int i
