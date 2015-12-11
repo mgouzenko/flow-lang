@@ -1,0 +1,24 @@
+// Lists of chars should work
+
+proc charGen(out char ochan){
+  list <char> test = ['c', 'a', 't', 's'];
+
+  while(#test > 0) {
+    char a = @test;
+    @test -> ochan;
+    test = ^test;
+  }
+  poison ochan;
+}
+
+proc printer(in char chan) {
+  while(chan) {
+    print_char(@chan);
+  }
+}
+
+int main() {
+  channel<char> chan;
+  charGen(chan);
+  printer(chan);
+}

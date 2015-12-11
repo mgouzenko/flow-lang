@@ -1,0 +1,5 @@
+// Should fail as bad type
+
+int main() {
+  doudffhd x; // Fail
+}

@@ -1,0 +1,7 @@
+// Should be able to assign string to another string
+
+int main() {
+  string a = "Hello World";
+  string b = a;
+  print_string(b);
+}

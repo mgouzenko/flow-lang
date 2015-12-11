@@ -1,0 +1,22 @@
+proc doubleGen(out double ochan){
+  list <double> test = [2.2, 2.9, 80.0, .1];
+  
+  while(#test > 0) {
+    @test -> ochan;
+    test = ^test;
+  }
+  poison ochan;
+}
+
+proc printer(in double chan) {
+  while(chan) {
+    print_double(@chan);
+    println();
+  }
+}
+
+int main() {
+  channel<double> chan;
+  doubleGen(chan);
+  printer(chan);
+}
