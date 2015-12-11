@@ -24,7 +24,7 @@ struct _cell {
 
 struct _cell* _add_front(union _payload element, struct _cell *tail){
 	struct _cell *new_cell = malloc(sizeof(struct _cell));
-	new_cell->references = 0;
+	new_cell->references = 1;
 	new_cell->data = element;
 	new_cell->next = tail;
     if(!tail)

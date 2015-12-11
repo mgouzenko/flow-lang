@@ -162,7 +162,7 @@ let compile (program : s_program) =
                                     translate_expr expr ^ "," ^ vdecl.s_declaration_id ^ ")" )
                                 (List.rev expr_list)
                           | TUnaryOp(ListTail, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
-                          | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name]
+                          | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name; "_increase_refs(" ^ id_name ^ ")"]
                           | TNoexpr -> [""]
                           | _ -> raise(Failure("Invalid list initializer " ))) in
                   "= NULL; " ^ String.concat ";\n" add_fronts
