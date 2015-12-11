@@ -252,7 +252,7 @@ let compile (program : s_program) =
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
             Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
-                     String.concat ";\n\t" (List.rev arg_decl_string_list) ^ ";\n};\n")
+                     String.concat ";\n\t" arg_decl_string_list ^ ";\n};\n")
           | _ -> "") ^
         (translate_type fdecl.s_return_type) ^ " " ^
         fdecl.s_function_name ^

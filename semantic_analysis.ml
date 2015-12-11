@@ -398,7 +398,7 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
     (* Create the function node to return *)
     let func_node = { s_return_type = fdecl.return_type;
       s_function_name = fdecl.function_name;
-      s_arguments = arg_decl_list;
+      s_arguments = List.rev arg_decl_list; (* We collected list in reverse order *)
       s_has_definition = true;
       s_body = func_body; } in
 
