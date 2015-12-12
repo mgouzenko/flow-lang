@@ -88,7 +88,6 @@ flow_type:
   | VOID                      {Void}
   | PROC                      {Proc}
   | STRING                    {String}
-  | IDENTIFIER                {Struct($1)}
   | LIST LT flow_type GT      {List($3)}
   | CHANNEL LT flow_type GT   {Channel($3, Nodir)}
   | IN flow_type              {Channel($2, In)}
