@@ -3,7 +3,7 @@ open Sast;;
 open Boilerplate;;
 
 let supported_channels = [Int; Char; Double]
-let supported_lists = [Int; Char; Double]
+let supported_lists = [Int; Char; Double; Channel(Int, Nodir)]
 
 let compile (program : s_program) =
 
@@ -84,6 +84,7 @@ let compile (program : s_program) =
                                 Int -> "_int"
                               | Double -> "_double"
                               | Char -> "_char"
+                              | Channel(Int, _) -> "_int_channel"
                               | _ -> "" (* Todo *) ) in
                             "_get_front(" ^ exp ^ ")." ^ type_to_union_element t
                     | _ -> raise(Failure("Invalid type")))
@@ -148,12 +149,16 @@ let compile (program : s_program) =
             (* If the declaration is a channel, we need to perform a malloc
              * and also initialize the struct associated with the channel *)
             Channel(t, Nodir) ->
-                 (* Perform the malloc with the proper struct *)
-                 (* "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^ *)
-                 "MALLOC_CHANNEL(" ^ translate_type t ^ ")\n" ^
+                (match fst vdecl.s_declaration_initializer with
+                    TNoexpr ->
+                        (* Perform the malloc with the proper struct *)
+                        (* "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^ *)
+                        "MALLOC_CHANNEL(" ^ translate_type t ^ ");\n" ^
 
-                  (* This will initializes the locks, etc. *)
-                 "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
+                        (* This will initializes the locks, etc. *)
+                        "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
+                  | TUnaryOp(Retrieve, _) -> " = " ^ translate_expr vdecl.s_declaration_initializer
+                  | _ -> "")
           | List(t) ->
                   if is_arg then ""
                   else let add_fronts =
@@ -236,7 +241,7 @@ let compile (program : s_program) =
         "\n" ^
         (String.concat ";\n"
         (List.map (fun vdecl ->
-            (translate_vdecl vdecl false) ^ " = " ^
+            (translate_vdecl vdecl true) ^ " = " ^
             "((struct _" ^ process.s_function_name ^ "_args*) _args)->" ^
             vdecl.s_declaration_id)
         process.s_arguments)) ^

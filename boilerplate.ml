@@ -8,74 +8,7 @@ let boilerplate_header =
  #include <string.h>
  #include <time.h>
 
-union _payload{
-	int _int;
-	double _double;
-	char _char;
-	void * _cell;
-};
-
-struct _cell {
-	struct _cell *next;
-	union _payload data;
-	int references;
-	int length;
-};
-
-struct _cell* _add_front(union _payload element, struct _cell *tail){
-	struct _cell *new_cell = malloc(sizeof(struct _cell));
-	new_cell->references = 1;
-	new_cell->data = element;
-	new_cell->next = tail;
-    if(!tail)
-        new_cell->length = 1;
-    else {
-        new_cell->length = tail->length + 1;
-        tail->references++;
-    }
-	return new_cell;
-}
-
-struct _cell* _get_tail(struct _cell* head){
-	if(!head){
-		printf(\"Runtime error: cannot get tail of empty list\");
-		exit(1);
-	}
-
-	return head->next;
-}
-
-void _decrease_refs(struct _cell* head){
-    if(!head) return;
-    else if(head->references > 1)
-        head->references--;
-    else{
-        _decrease_refs(head->next);
-        free(head);
-    }
-}
-
-void _increase_refs(struct _cell* head){
-    if(head)
-        head->references++;
-}
-
-union _payload _get_front(struct _cell* head){
-    if (!head) {
-        printf(\"Runtime error: cannot get head of empty list\");
-        exit(1);
-    }
-
-	return head->data;
-}
-
-int _get_length(struct _cell* head){
-	if(!head) return 0;
-	return head->length;
-}
-
-
- #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
+#define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
                                int size; \
                                bool poisoned; \
                                pthread_cond_t write_ready; \
@@ -221,4 +154,72 @@ void _wait_for_finish(){
         curr = curr->next;
     }
 }\n
+
+union _payload{
+	int _int;
+	double _double;
+	char _char;
+	void * _cell;
+    struct _int_channel  *_int_channel;
+};
+
+struct _cell {
+	struct _cell *next;
+	union _payload data;
+	int references;
+	int length;
+};
+
+struct _cell* _add_front(union _payload element, struct _cell *tail){
+	struct _cell *new_cell = malloc(sizeof(struct _cell));
+	new_cell->references = 1;
+	new_cell->data = element;
+	new_cell->next = tail;
+    if(!tail)
+        new_cell->length = 1;
+    else {
+        new_cell->length = tail->length + 1;
+        tail->references++;
+    }
+	return new_cell;
+}
+
+struct _cell* _get_tail(struct _cell* head){
+	if(!head){
+		printf(\"Runtime error: cannot get tail of empty list\");
+		exit(1);
+	}
+
+	return head->next;
+}
+
+void _decrease_refs(struct _cell* head){
+    if(!head) return;
+    else if(head->references > 1)
+        head->references--;
+    else{
+        _decrease_refs(head->next);
+        free(head);
+    }
+}
+
+void _increase_refs(struct _cell* head){
+    if(head)
+        head->references++;
+}
+
+union _payload _get_front(struct _cell* head){
+    if (!head) {
+        printf(\"Runtime error: cannot get head of empty list\");
+        exit(1);
+    }
+
+	return head->data;
+}
+
+int _get_length(struct _cell* head){
+	if(!head) return 0;
+	return head->length;
+}
+ 
 "
