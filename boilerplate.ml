@@ -195,23 +195,33 @@ struct _pthread_node{
 };
 
 struct _pthread_node* _head = NULL;
+struct _pthread_node* _tail = NULL;
 
 pthread_mutex_t _thread_list_lock;
 
 pthread_t* _make_pthread_t() {
   pthread_mutex_lock(&_thread_list_lock);
-  struct _pthread_node *new_pthread = (struct _pthread_node *) malloc(sizeof(struct _pthread_node));
+  struct _pthread_node *new_pthread =
+      (struct _pthread_node *)malloc(sizeof(struct _pthread_node));
   new_pthread->next = _head;
+  if(new_pthread->next == NULL){
+	  new_pthread->next = new_pthread;
+	  _tail = new_pthread;
+  }
   _head = new_pthread;
+  _tail->next = _head;
   pthread_mutex_unlock(&_thread_list_lock);
   return &(new_pthread->thread);
 }
 
 void _wait_for_finish(){
-  struct _pthread_node* curr = _head;
-  while(curr){
+  if(_head == NULL)
+	  return;
+  struct _pthread_node *curr, *begin;
+  curr = begin = _head;
+  do {
     pthread_join(curr->thread, NULL);
     curr = curr->next;
-  }
+  } while(curr != begin);
 }\n
 "

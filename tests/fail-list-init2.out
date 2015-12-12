@@ -1,1 +1,2 @@
-Fatal error: exception Failure("List must be initialized with expressions of the same type")
+Error in semantic analysis
+List must be initialized with expressions of the same type

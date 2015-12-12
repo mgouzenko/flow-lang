@@ -222,6 +222,7 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
       (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ListInitializer(expr_list) ->
+         if expr_list = [Noexpr] then TNoexpr, Void else
          let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
          let list_type = snd(List.hd checked_expr_list) in
          let of_same_type =
@@ -259,7 +260,9 @@ let check_variable_declaration (env: environment) (decl: variable_declaration) =
                 s_declaration_id = decl.declaration_id;
                 s_declaration_initializer = (expr_details, t) } in
             (new_env, s_var_decl))
-    else raise (Failure(decl.declaration_id ^ ": Declaration type does not match expression")) in
+    else raise (Failure(decl.declaration_id ^ ": Declaration type does not match expression\n" ^
+                                              "Attempting to initialize " ^ string_of_type decl.declaration_type ^
+                                              " with " ^ string_of_type t)) in
 
 let check_arg_declaration (env: environment) (decl: variable_declaration) =
     match decl.declaration_initializer with

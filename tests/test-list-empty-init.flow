@@ -9,7 +9,7 @@ void print_list(list<int> l) {
 }
 
 int main() {
-  list <int> test = [];
-  test1 = 1::test;
+  list<int> test = [];
+  test = 1::test;
   print_list(test);
 }

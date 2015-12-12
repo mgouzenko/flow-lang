@@ -1,1 +1,2 @@
-Fatal error: exception Failure("Undeclared function sum")
+Error in semantic analysis
+Undeclared function sum

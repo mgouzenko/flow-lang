@@ -11,7 +11,11 @@ let _ =
       else (Compile, open_in Sys.argv.(1)) in
   let lexbuf = Lexing.from_channel file in
   let program = Parser.program Scanner.token lexbuf in
-  let sprogram = Semantic_analysis.check_progam program in
+  let sprogram =
+      try Semantic_analysis.check_progam program
+      with Failure m -> prerr_endline ("Error in semantic analysis\n" ^ m);
+                        flush stdout;
+                        exit 1 in
   match action with
   | Ast -> ignore(
       let _ = Printer.print_string_of_program program in

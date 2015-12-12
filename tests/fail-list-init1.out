@@ -1,1 +1,3 @@
-Fatal error: exception Failure("tail: Declaration type does not match expression")
+Error in semantic analysis
+tail: Declaration type does not match expression
+Attempting to initialize list<char> with list<int>
