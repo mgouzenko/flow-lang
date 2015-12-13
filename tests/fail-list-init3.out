@@ -1,3 +1,0 @@
-Error in semantic analysis
-test: Declaration type does not match expression
-Attempting to initialize list<int> with list<double>

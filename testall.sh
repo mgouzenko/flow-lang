@@ -49,7 +49,7 @@ Run() {
 }
 
 RunFail() {
-    echo $* 1>&2
+    # echo $* 1>&2
     eval $* || {
       return 1
     }
@@ -103,12 +103,20 @@ CheckFail() {
 
     generatedfiles=""
 
-    if generatedfiles="$generatedfiles ${basename}.errorMsg" && RunFail "$FLOWC" "-c" $1 "2>" ${basename}.errorMsg; then
-      echo "This is not the expected result."
-    else
-      Compare ${basename}.errorMsg ${reffile}.out ${basename}.errorMsg.diff
-    fi
+    if generatedfiles="$generatedfiles ${basename}.c" && RunFail "$FLOWC" "-c" $1 "&>" ${basename}.c; then
+      error=1;
 
+      # Check for runtime error 
+      generatedfiles="$generatedfiles ${basename}.c" &&
+      Run "$FLOWC" "-c" $1 ">" ${basename}.c &&
+      gcc ${basename}.c  &&
+      if ./a.out;then
+        error=1;
+      else
+        error=0;
+      fi
+
+    fi
     # Report the status and clean up the generated files
 
     if [ $error -eq 0 ] ; then
@@ -118,6 +126,7 @@ CheckFail() {
       echo "OK"
       echo "###### SUCCESS" 1>&2
     else
+      echo "############ FAILED ###############"
       echo "###### FAILED" 1>&2
       globalerror=$error
     fi
