@@ -103,11 +103,15 @@ let compile (program : s_program) =
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
             match id with
-            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ")" 
-            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ")" 
-            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ")" 
-            | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ")"
-            | "println" ->  "printf(\"\\n\")"
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n" 
+                ^ "fflush(stdout)"
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n" 
+                ^ "fflush(stdout)"
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n" 
+                ^ "fflush(stdout)"
+            | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ");\n"
+                ^ "fflush(stdout)"
+            | "println" ->  "printf(\"\\n\");\n" ^ "fflush(stdout)"
             | "len" -> expr_list_to_string expr_list ^ ".size"
             | "rand" -> " (double)rand() / (double)RAND_MAX "
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
