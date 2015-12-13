@@ -255,8 +255,8 @@ let compile (program : s_program) =
     let translate_fdecl (fdecl : s_function_declaration) : string =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
-            then "pthread_mutex_init(&_thread_list_lock, NULL);\n srand(time(NULL));\n", "_wait_for_finish();\n"
-            else "",""
+            then "", "_wait_for_finish();\n"
+            else "_initialize_runtime();\n",""
         and temp_list_decl = "struct _cell* temp;\n" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with

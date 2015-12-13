@@ -1,0 +1,37 @@
+proc numGen(out int ochan){
+  list<int> test = [1, 2, 3, 4, 5];
+
+  while(#test > 0) {
+    @test -> ochan;
+    test = ^test;
+  }
+
+  poison ochan;
+}
+
+proc printer(in int chan1, in int chan2){
+	while(chan1 && chan2){
+		print_int(@chan1);
+		print_int(@chan2);
+	}
+}
+
+proc connector(list<channel<int>> int_channels){
+	channel<int> chan1 = @int_channels;
+	int_channels = ^int_channels;
+	channel<int> chan2 = @int_channels;
+
+	printer(chan1, chan2);
+}
+
+int main(){
+	list<channel<int>> int_channels;
+	channel<int> foo;
+	channel<int> bar;
+	numGen(foo);
+	numGen(bar);
+	int_channels = foo::int_channels;
+	int_channels = bar::int_channels;
+
+	connector(int_channels);
+}

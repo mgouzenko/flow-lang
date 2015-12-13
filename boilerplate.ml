@@ -131,6 +131,13 @@ struct _pthread_node* _head = NULL;
 struct _pthread_node* _tail = NULL;
 
 pthread_mutex_t _thread_list_lock;
+pthread_mutex_t _ref_counting_lock;
+
+void _initialize_runtime(){
+    pthread_mutex_init(&_thread_list_lock, NULL);
+    pthread_mutex_init(&_ref_counting_lock, NULL);
+    srand(time(NULL));
+}
 
 pthread_t* _make_pthread_t() {
   pthread_mutex_lock(&_thread_list_lock);
@@ -193,19 +200,33 @@ struct _cell* _get_tail(struct _cell* head){
 	return head->next;
 }
 
-void _decrease_refs(struct _cell* head){
-    if(!head) return;
+void __decrease_refs(struct _cell* head, int lock){
+    if(lock)
+        pthread_mutex_lock(&_ref_counting_lock);
+    if(!head){
+        if(lock)
+            pthread_mutex_unlock(&_ref_counting_lock);
+        return;
+    }
     else if(head->references > 1)
         head->references--;
     else{
-        _decrease_refs(head->next);
+        __decrease_refs(head->next, 0);
         free(head);
     }
+    if(lock)
+        pthread_mutex_unlock(&_ref_counting_lock);
+}
+
+void _decrease_refs(struct _cell* head){
+    __decrease_refs(head, 1);
 }
 
 void _increase_refs(struct _cell* head){
+    pthread_mutex_lock(&_ref_counting_lock);
     if(head)
         head->references++;
+    pthread_mutex_unlock(&_ref_counting_lock);
 }
 
 union _payload _get_front(struct _cell* head){
