@@ -1,0 +1,28 @@
+// Trying to read from a channel that has been poisoned should fail
+
+proc numGen(out int ochan){
+  list <int> test = [1, 2, 3, 4, 5];
+
+  while(#test > 0) {
+    int a = @test;
+    a -> ochan;
+    test = ^test;
+    if (a == 3) {
+      poison ochan; // FAIL
+    }
+  }
+}
+
+proc sum(in int chan) {
+  int sum = 0;
+  while(chan) {
+    sum = sum + @chan; // FAIL
+  }
+  print_int(sum);
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  sum(chan);
+}
