@@ -201,25 +201,25 @@ struct _cell* _get_tail(struct _cell* head){
 }
 
 void __decrease_refs(struct _cell* head, int lock){
-    if(lock)
-        pthread_mutex_lock(&_ref_counting_lock);
-    if(!head){
-        if(lock)
-            pthread_mutex_unlock(&_ref_counting_lock);
-        return;
-    }
-    else if(head->references > 1)
-        head->references--;
-    else{
-        __decrease_refs(head->next, 0);
-        free(head);
-    }
-    if(lock)
-        pthread_mutex_unlock(&_ref_counting_lock);
+    //if(lock)
+        //pthread_mutex_lock(&_ref_counting_lock);
+    //if(!head){
+        //if(lock)
+            //pthread_mutex_unlock(&_ref_counting_lock);
+        //return;
+    //}
+    //else if(head->references > 1)
+        //head->references--;
+    //else{
+        //__decrease_refs(head->next, 0);
+        //free(head);
+    //}
+   // if(lock)
+        //pthread_mutex_unlock(&_ref_counting_lock);
 }
 
 void _decrease_refs(struct _cell* head){
-    __decrease_refs(head, 1);
+    //__decrease_refs(head, 1);
 }
 
 void _increase_refs(struct _cell* head){
