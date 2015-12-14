@@ -1,0 +1,224 @@
+channel<int> chan_at(list<channel<int>> l, int n) {
+	int i;
+	list<channel<int>> cur = l;
+	for(i = 0; i < n; i = i + 1) {
+		cur = ^cur;
+		break;
+	}
+	return @cur;
+}
+
+proc comparator (in int a_in, in int b_in, out int a_out, out int b_out, bool ascending) {
+	while(a_in && b_in) {
+
+		int larger;
+		int smaller;
+
+		int a = @a_in;
+		int b = @b_in;
+		
+		if (a < b) {
+			smaller = a;
+			larger = b;
+		} else {
+			smaller = b;
+			larger = a;
+		}
+
+		if(ascending) {
+			smaller -> a_out;
+			larger -> b_out;
+		} else {
+			larger -> a_out;
+			smaller -> b_out;
+		}
+	}
+	poison a_out;
+	poison b_out;
+}
+
+void bitonic_comp_network (int n, bool ascending, list<channel<int>> input_chans, list<channel<int>> output_chans) {
+
+	int i = 0;
+	int j = n / 2;
+
+	while(i < n) {
+		comparator(chan_at(input_chans, i), chan_at(input_chans, j), 
+				   chan_at(output_chans, i), chan_at(output_chans, j), ascending);
+
+		i = i + 1;
+		j = j + 1;
+	}
+}
+
+void bitonic_merger (int n, bool ascending, list<channel<int>> input_chans, list<channel<int>> output_chans) {
+
+	if(n == 2) {
+		comparator(chan_at(input_chans, 0), chan_at(input_chans, 1), 
+				   chan_at(output_chans, 0), chan_at(output_chans, 1), ascending);
+		return;
+	}
+
+	int i;
+
+	list<channel<int>> intermediate_chans;
+	for (i = 0; i < n; i = i + 1) {
+		channel<int> l;
+		intermediate_chans = l::intermediate_chans;
+	}
+
+	list<channel<int>> intermediate_chans_top;
+	for (i = 0; i < n/2; i = i + 1) {
+		intermediate_chans_top = chan_at(intermediate_chans, i)::intermediate_chans_top;
+	}
+	list<channel<int>> intermediate_chans_bottom;
+	for (i = n/2; i < n; i = i + 1) {
+		intermediate_chans_bottom = chan_at(intermediate_chans,i)::intermediate_chans_bottom;
+	}
+
+	list<channel<int>> bitonic_outputs_top;
+	for(i = n/2 - 1; i >= 0; i = i - 1) {
+		bitonic_outputs_top = chan_at(output_chans, i)::bitonic_outputs_top;
+	}
+	list<channel<int>> bitonic_outputs_bottom;
+	for (i = n - 1; i >= n/2; i = i - 1) {
+		bitonic_outputs_bottom = chan_at(output_chans, i)::bitonic_outputs_bottom;
+	}
+
+	bitonic_comp_network(n, ascending, input_chans, intermediate_chans);
+	bitonic_merger(n/2, ascending, intermediate_chans_top, bitonic_outputs_top);
+	bitonic_merger(n/2, ascending, intermediate_chans_bottom, bitonic_outputs_bottom);
+}
+
+void bitonic_sorter (int n, bool ascending, list<channel<int>> input_chans, list<channel<int>> output_chans) {
+	if(n == 2) {
+		comparator(chan_at(input_chans, 0), chan_at(input_chans, 1), 
+				   chan_at(output_chans, 0), chan_at(output_chans, 1), ascending);
+		return;
+	}
+
+	int i;
+
+	list<channel<int>> bitonic_inputs_top;
+	for(i = n/2 - 1; i >= 0; i = i - 1) {
+		bitonic_inputs_top = chan_at(input_chans,i)::bitonic_inputs_top;
+	}
+	list<channel<int>> bitonic_inputs_bottom;
+	for (i = n - 1; i >= n/2; i = i - 1) {
+		bitonic_inputs_bottom = chan_at(input_chans, i)::bitonic_inputs_bottom;
+	}
+
+	list<channel<int>> intermediate_chans;
+	for (i = 0; i < n; i = i + 1) {
+		channel<int> l;
+		intermediate_chans = l::intermediate_chans;
+	}
+
+	list<channel<int>> intermediate_chans_top;
+	for (i = 0; i < n/2; i = i + 1) {
+		intermediate_chans_top = chan_at(intermediate_chans, i)::intermediate_chans_top;
+	}
+	list<channel<int>> intermediate_chans_bottom;
+	for (i = n/2; i < n; i = i + 1) {
+		intermediate_chans_bottom = chan_at(intermediate_chans, i)::intermediate_chans_bottom;
+	}
+
+	bitonic_sorter(n/2, ascending, bitonic_inputs_top, intermediate_chans_top);
+	bitonic_sorter(n/2, !ascending, bitonic_inputs_bottom, intermediate_chans_bottom);
+	bitonic_merger(n, ascending, intermediate_chans, output_chans);
+}
+
+proc muxer4_1(in int a, in int b, in int c, in int d, out int out_chan) {
+	while(true){
+		if(a) {
+			@a -> out_chan;
+		} else { break; }
+		if(b) {
+			@b -> out_chan;
+		} else { break; }
+		if(c) {
+			@c -> out_chan;
+		} else { break; }
+		if(d) {
+			@d -> out_chan;
+		} else { break; }
+	}
+	poison out_chan;
+}
+
+proc muxer1_4(out int a, out int b, out int c, out int d, in int in_chan) {
+	while(true){
+
+		if(in_chan) {
+			@in_chan -> a;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> b;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> c;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> d;
+		} else { break; }
+	}
+	poison a;
+	poison b;
+	poison c;
+	poison d;
+}
+
+proc printer(in int n) {
+	while(n) {
+		print_int(@n);
+		println();
+	}
+}
+
+proc num_gen(out int nums) {
+	3 -> nums;
+	2 -> nums;
+	1 -> nums;
+	5 -> nums;
+}
+
+int main() {
+	list<int> unsorted = [3,2,6,5];
+
+	channel<int> a_in;
+	channel<int> b_in;
+	channel<int> c_in;
+	channel<int> d_in;
+	list<channel<int>> in_chans;// = [a_in, b_in, c_in, d_in];
+	in_chans = d_in::in_chans;
+	in_chans = c_in::in_chans;
+	in_chans = b_in::in_chans;
+	in_chans = a_in::in_chans;
+
+	channel<int> a_out;
+	channel<int> b_out;
+	channel<int> c_out;
+	channel<int> d_out;
+	list<channel<int>> out_chans;// = [a_out, b_out, c_out, d_out];
+
+	out_chans = d_out::out_chans;
+	out_chans = c_out::out_chans;
+	out_chans = b_out::out_chans;
+	out_chans = a_out::out_chans;
+
+	channel<int> nums;
+	num_gen(nums);
+
+	muxer1_4(a_in, b_in, c_in, d_in, nums);
+	bitonic_sorter(4, true, in_chans, out_chans);
+
+	print_string("Sorter created successfully...\n");
+
+	channel<int> mux_out;
+	muxer4_1(a_out, b_out, c_out, d_out, mux_out);
+	printer(mux_out);
+
+}
