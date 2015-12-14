@@ -61,7 +61,10 @@ int _init_channel(struct _channel *channel){
     while(channel->size >= channel->MAX_SIZE) \
         pthread_cond_wait(&channel->write_ready, &channel->lock); \
     assert(channel->size < channel->MAX_SIZE); \
-    assert(!(channel->poisoned)); \
+    if(channel->poisoned){ \
+        fprintf(stderr, \"Attempting to read from a channel that is empty and poisoned\"); \
+        exit(1); \
+    } \
     channel->queue[channel->back] = element; \
     channel->back = (channel->back + 1) % channel->MAX_SIZE; \
     channel->size++; \
@@ -85,7 +88,10 @@ MAKE_ENQUEUE_FUNC(double)
 
 #define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
-    assert(channel->size != 0); \
+    if(channel->size == 0){ \
+        fprintf(stderr, \"Attempting to read from empty channel\"); \
+        exit(1); \
+    } \
     type result = channel->queue[channel->front]; \
     channel->front = (channel->front + 1) % channel->MAX_SIZE; \
     channel->size--; \
@@ -193,7 +199,7 @@ struct _cell* _add_front(union _payload element, struct _cell *tail){
 
 struct _cell* _get_tail(struct _cell* head){
 	if(!head){
-		printf(\"Runtime error: cannot get tail of empty list\");
+		fprintf(stderr, \"Runtime error: cannot get tail of empty list\");
 		exit(1);
 	}
 
@@ -231,7 +237,7 @@ void _increase_refs(struct _cell* head){
 
 union _payload _get_front(struct _cell* head){
     if (!head) {
-        printf(\"Runtime error: cannot get head of empty list\");
+        fprintf(stderr, \"Runtime error: cannot get head of empty list\");
         exit(1);
     }
 
