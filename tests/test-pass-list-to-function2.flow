@@ -1,0 +1,18 @@
+// Lists should pass by value
+
+int sumList(list <int> test){
+  int sum = 0;
+  while(#test > 0) {
+    sum = sum + @test;
+    test = ^test;
+  }
+  return sum;
+}
+
+int main() {
+  list <int> test = [1, 2, 3, 4, 5];
+  int s = sumList(test);
+  int s2 = sumList(test);
+
+  print_int(s2);
+}
