@@ -1,0 +1,6 @@
+// Accessing the head of an empty list should not be allowed. 
+
+int main() {
+  list<int> test = [];
+  int a = @test;
+}

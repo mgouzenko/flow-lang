@@ -1,0 +1,6 @@
+// Accessing the tail of an empty list should not be allowed. 
+
+int main() {
+  list<int> test = [];
+  test = ^test;
+}

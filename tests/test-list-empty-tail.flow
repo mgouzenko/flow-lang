@@ -1,0 +1,7 @@
+// Accessing the tail of an list with one element should return an empty list. 
+
+int main() {
+  list<int> test = [1];
+  test = ^test;
+  print_int(#test);
+}
