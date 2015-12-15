@@ -1,0 +1,7 @@
+// Should be able to reinitalize a list
+
+int main() {
+  list<int> test = [];
+  test = [1];
+  print_int(@test);
+}
