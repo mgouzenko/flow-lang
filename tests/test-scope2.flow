@@ -1,0 +1,15 @@
+// Flow should have block scope, similar to C
+
+int a = 3;
+
+int main() {
+  print_int(a);
+  println();
+  if (true) {
+    int a = 4;
+    print_int(a);
+    println();
+  }
+  print_int(a);
+  println();
+}

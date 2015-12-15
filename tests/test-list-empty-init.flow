@@ -1,4 +1,4 @@
-// Lists should be able to able to be initialized as
+// Lists should be able to able to be initialized as empty
 
 void print_list(list<int> l) {
   while(#l > 0) {
