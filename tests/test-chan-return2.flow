@@ -11,17 +11,16 @@ channel<int> build_chan(){
   return test;
 }
 
-proc printer(in int to_print){
-  while(to_print){
-    print_int(@to_print);
+proc printer(in int to_print1, in int to_print2){
+  while(to_print1 || to_print2){
+    if(to_print1) {print_int(@to_print1);}
+	if(to_print2) {print_int(@to_print2);}
   }
 }
 
 int main(){
   channel<int> test1 = build_chan();
-  printer(test1);
-  println();
   channel<int> test2 = build_chan();
-  printer(test2);
+  printer(test1, test2);
 
 }
