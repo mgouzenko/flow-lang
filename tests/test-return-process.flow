@@ -7,7 +7,7 @@ proc numGen(out int ochan){
 }
 
 proc printer(in int chan) {
-  print_int(@chan);
+  while(chan){ print_int(@chan);}
 }
 
 int main() {

@@ -15,7 +15,11 @@ let boilerplate_header =
                                pthread_cond_t read_ready; \
                                int front; \
                                int back; \
-                               int MAX_SIZE;
+                               int MAX_SIZE; \
+                               int claimed_for_writing; \
+                               int claimed_for_reading; \
+                               pthread_t writing_thread; \
+                               pthread_t reading_thread; \
 
 struct _channel{
   BASIC_CHANNEL_MEMBERS
@@ -49,6 +53,8 @@ int _init_channel(struct _channel *channel){
       printf(\"Cond init failed\");
       return 1;
   }
+  channel->claimed_for_reading = 0;
+  channel->claimed_for_writing = 0;
   channel->MAX_SIZE = 100;
   channel->front = 0;
   channel->back = 0;
@@ -58,6 +64,17 @@ int _init_channel(struct _channel *channel){
 
 #define MAKE_ENQUEUE_FUNC(type) type _enqueue_##type(type element, struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
+    pthread_t this_thread = pthread_self(); \
+    if(!channel->claimed_for_writing){ \
+        channel->claimed_for_writing = 1; \
+        channel->writing_thread = this_thread; \
+    } \
+    else if(channel->writing_thread != this_thread){ \
+        fprintf(stderr, \"Thread 0x%x is trying to write to a channel belonging to thread 0x%x\\n\", \
+            (int) this_thread, \
+            (int) channel->writing_thread); \
+        exit(1); \
+    } \
     while(channel->size >= channel->MAX_SIZE) \
         pthread_cond_wait(&channel->write_ready, &channel->lock); \
     assert(channel->size < channel->MAX_SIZE); \
@@ -70,7 +87,7 @@ int _init_channel(struct _channel *channel){
     channel->size++; \
     pthread_cond_signal(&channel->read_ready); \
     pthread_mutex_unlock(&channel->lock); \
-    return element;\
+    return element; \
 }
 
 MAKE_ENQUEUE_FUNC(int)
@@ -88,6 +105,17 @@ MAKE_ENQUEUE_FUNC(double)
 
 #define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
+    pthread_t this_thread = pthread_self(); \
+    if(!channel->claimed_for_reading){ \
+        channel->claimed_for_reading = 1; \
+        channel->reading_thread = this_thread; \
+    } \
+    else if(channel->reading_thread != this_thread){ \
+        fprintf(stderr, \"Thread 0x%x is trying to read from a channel belonging to thread 0x%x\\n\", \
+            (int) this_thread, \
+            (int) channel->reading_thread); \
+        exit(1); \
+    } \
     if(channel->size == 0){ \
         fprintf(stderr, \"Attempting to read from empty channel\"); \
         exit(1); \
