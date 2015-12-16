@@ -49,7 +49,6 @@ let rec print_string_of_expr = function
   | BoolLiteral(b) -> print_dot_node(string_of_bool b)
   | CharLiteral(c) -> print_dot_node (Char.escaped c)
   | DoubleLiteral(d) -> print_dot_node "Some double"
-  | StructInitializer(decl_list) -> print_dot_node "StructInitializer"
   | ListInitializer(expr_list) -> 
           let arrinitnode = print_dot_node "ListInitializer"
           in let enodes = List.map print_string_of_expr expr_list
@@ -87,7 +86,6 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Struct(s) -> s;;
 
 let print_string_of_type t =
     print_dot_node (string_of_type t)
@@ -101,17 +99,6 @@ let print_string_of_var_decl vdecl =
     and _ = print_dot_edge decl_node name_node  ~desc: "name"
     and _ = print_dot_edge decl_node expr_node ~desc: "initializer"
     in decl_node
-
-let print_string_of_struct_decl sdecl =
-    let struct_node = print_dot_node "struct"
-    and name_node = print_dot_node sdecl.struct_name
-    and members_node = print_dot_node "members" in
-    let _ = print_dot_edge struct_node name_node ~desc: "name"
-    and _ = print_dot_edge struct_node members_node
-    and _ = List.iter (fun vdecl ->
-        let vdecl_node = print_string_of_var_decl vdecl in
-        print_dot_edge members_node vdecl_node) sdecl.struct_members in
-    struct_node
 
 let rec print_string_of_stmt = function
       Expr(e) -> print_string_of_expr e
@@ -178,7 +165,6 @@ let print_string_of_func_decl fdecl =
 let print_string_of_decl = function
       VarDecl(vd) -> print_string_of_var_decl vd
     | FuncDecl(fd) -> print_string_of_func_decl fd
-    | StructDecl(sd) -> print_string_of_struct_decl sd
 
 let print_string_of_program (prog: program) =
     let nodes = List.map print_string_of_decl prog in

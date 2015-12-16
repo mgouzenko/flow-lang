@@ -56,7 +56,6 @@ rule token = parse
 | "channel"     { CHANNEL }
 | "proc"        { PROC }
 | "void"        { VOID }
-| "struct"      { STRUCT }
 | "true"        { BOOL_LITERAL(true) }
 | "false"       { BOOL_LITERAL(false) }
 | digit+ as lxm { INT_LITERAL(int_of_string lxm) }

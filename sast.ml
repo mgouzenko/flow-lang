@@ -12,7 +12,6 @@ and expr_details =
   | TBoolLiteral of bool
   | TCharLiteral of char
   | TDoubleLiteral of float
-  | TStructInitializer of s_dot_initializer list
   | TListInitializer of typed_expr list
   | TId of string
   | TBinOp of typed_expr * bin_op * typed_expr
@@ -48,14 +47,8 @@ type s_function_declaration = {
     s_body : s_stmt list;
 }
 
-type s_struct_declaration = {
-    s_struct_name: string;
-    s_struct_members: s_variable_declaration list;
-}
-
 type s_declaration =
       SVarDecl of s_variable_declaration
     | SFuncDecl of s_function_declaration
-    | SStructDecl of s_struct_declaration
 
 type s_program = s_declaration list

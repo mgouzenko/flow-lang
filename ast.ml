@@ -16,7 +16,6 @@ type flow_type =
     | Proc
     | String
     | Channel of flow_type * direction
-    | Struct of string
     | List of flow_type
 
 type dot_initializer = {
@@ -30,7 +29,6 @@ and expr =
   | BoolLiteral of bool
   | CharLiteral of char
   | DoubleLiteral of float
-  | StructInitializer of dot_initializer list
   | ListInitializer of expr list
   | Id of string
   | BinOp of expr * bin_op * expr
@@ -64,14 +62,8 @@ type function_declaration = {
     body : stmt list;
 }
 
-type struct_declaration = {
-    struct_name: string;
-    struct_members: variable_declaration list;
-}
-
 type declaration =
       VarDecl of variable_declaration
     | FuncDecl of function_declaration
-    | StructDecl of struct_declaration
 
 type program = declaration list
