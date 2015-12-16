@@ -157,7 +157,7 @@ let compile (program : s_program) =
         (match vdecl.s_declaration_type with
             (* If the declaration is a channel, we need to perform a malloc
              * and also initialize the struct associated with the channel *)
-            Channel(t, Nodir) ->
+            Channel(t, Nodir) -> if is_arg then "" else
                 (match fst vdecl.s_declaration_initializer with
                     TNoexpr ->
                         (* Perform the malloc with the proper struct *)
