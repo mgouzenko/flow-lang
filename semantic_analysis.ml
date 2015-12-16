@@ -282,7 +282,7 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
       | Block(stmt_list) ->
             let new_symbol_table = { parent = Some(env.symbol_table);
                                      variables = [] } in
-            let _, checked_stmts = check_stmt_list {env with symbol_table = new_symbol_table} stmt_list in
+            let _, checked_stmts = check_stmt_list {env with symbol_table = new_symbol_table} stmt_list false in
             (env, SBlock(checked_stmts))
 
         (* A return statement must have the same return type as the
@@ -350,12 +350,16 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
                 | Channel(t, _) -> raise(Failure("Can only poison out channels"))
                 | _ -> raise(Failure("Attempting to poison a non-channel"))
 
-and check_stmt_list (env: environment) (stmt_list: stmt list) : (environment * s_stmt list) =
+and check_stmt_list (env: environment) (stmt_list: stmt list) (must_return: bool): (environment * s_stmt list) =
     (* The environments have to be folded through the stmt list.
      * Each statement takes the updated environment generated from
      * the last one. acc (the accumulator) is a pair of env, checked
      * statements. The statements must be reversed because they are collected
      * backwards in a list. *)
+    let _ = if must_return then
+        try ignore (List.find (fun s -> match s with Return(_) -> true | _ -> false) stmt_list)
+        with Not_found -> raise(Failure("Non-void function might not return")) in
+
     let new_env, checked_stmts = List.fold_left
     (fun acc stmt ->
         let env', stmt_node = check_stmt (fst acc) stmt in
@@ -396,7 +400,10 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
 
     (* Check the function body. Discard the environment. We won't need it
      * outside the scope of the function body. *)
-    let _, func_body = check_stmt_list env_with_args fdecl.body in
+    let must_return = if fdecl.return_type = Void ||
+                         fdecl.return_type = Proc ||
+                         fdecl.function_name = "main" then false else true in
+    let _, func_body = check_stmt_list env_with_args fdecl.body must_return in
 
     (* Create the function node to return *)
     let func_node = { s_return_type = fdecl.return_type;

@@ -47,7 +47,7 @@ declarations:
   | declarations function_declaration { FuncDecl($2)::$1 }
 
 function_declaration:
-    flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE opt_stmt_list RBRACE
+    flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE stmt_list RBRACE
     {
         {
             return_type = $1;
@@ -57,7 +57,7 @@ function_declaration:
             body = $7;
         }
     }
-  | flow_type IDENTIFIER LPAREN arg_decl_list RPAREN SEMI
+  | flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE RBRACE
     {
       {
             return_type = $1;
@@ -114,11 +114,6 @@ dot_initializer:
     DOT IDENTIFIER ASSIGN expr {{ dot_initializer_id = $2;
                                   dot_initializer_val = $4 }}
 
-opt_stmt_list:
-         {[]}
-  | stmt {[$1]}
-  | stmt opt_stmt_list {$1::$2}
-
 stmt_list:
     stmt {[$1]}
   | stmt stmt_list {$1::$2}
@@ -161,13 +156,8 @@ expr_opt:
   | expr {$1}
 
 expr_list:
-         {[]}
-  | expr {[$1]}
+    expr {[$1]}
   | expr COMMA expr_list {$1::$3}
-
-expr_opt_list:
-    expr_opt {[$1]}
-  | expr_opt COMMA expr_opt_list {$1::$3}
 
 expr:
     INT_LITERAL {IntLiteral($1)}
@@ -177,6 +167,7 @@ expr:
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
   | LBRACKET expr_list RBRACKET {ListInitializer($2)}
+  | LBRACKET RBRACKET {ListInitializer([])}
   | RETRIEVE IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
