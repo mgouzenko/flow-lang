@@ -1,0 +1,12 @@
+// Declaring a variable in a for statement should not affect outer scope
+
+int main() {
+  int a = 3;
+  print_int(a);
+  int b = 0;
+  for(b; b < 1; b=b+1) {
+    int a = 4;
+    print_int(a);
+  }
+  print_int(a);
+}
