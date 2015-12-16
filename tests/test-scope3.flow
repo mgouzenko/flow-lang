@@ -1,0 +1,13 @@
+// Declaring a variable in a while statement should not affect outer scope
+
+int main() {
+  int a = 3;
+  print_int(a);
+  int b = 1;
+  while (b > 0) {
+    int a = 4;
+    print_int(a);
+    b = b - 1;
+  }
+  print_int(a);
+}

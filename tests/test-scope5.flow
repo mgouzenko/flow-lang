@@ -1,9 +1,10 @@
-// Declaring a variable in an if statement should not affect outer scope
+// Declaring a variable in a block should not affect outer scope
 
 int main() {
   int a = 3;
   print_int(a);
-  if (true) {
+  int b = 0;
+  {
     int a = 4;
     print_int(a);
   }
