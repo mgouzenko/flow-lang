@@ -218,8 +218,6 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
         in check_binop checked_e1 checked_e2 op
-
-      (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ListInitializer(expr_list) ->
          if List.length expr_list == 0 then TNoexpr, Void else

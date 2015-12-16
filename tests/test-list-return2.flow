@@ -1,0 +1,52 @@
+proc interleaver(in int chan1, in int chan2, out int ochan) {
+while(chan1 || chan2){
+    if(chan1) {@chan1 -> ochan;}
+    if(chan2) {@chan2 -> ochan;}
+}
+  poison ochan;
+}
+
+proc tokenGen(out int ochan, list<int> tokens) {
+  int i;
+  while(#tokens > 0){
+  	  @tokens -> ochan;
+	  tokens = ^tokens;
+  }
+  poison ochan;
+}
+
+proc printer(in int chan) {
+  while(chan) {
+    print_int(@chan);
+  }
+}
+
+list<channel<int>> foo(){
+	channel<int> a;
+	channel<int> b;
+	channel<int> c;
+	list<channel<int>> bar;
+	list<int> arr1 = [0,2,4,6,8];
+    list<int> arr2 = [1,3,5,7,9];
+    tokenGen(a, arr1);
+    tokenGen(b, arr2);
+
+	bar = a::bar;
+	bar = b::bar;
+	return c::bar;
+}
+
+int main(){
+	list<channel<int>> baz = foo();
+
+	channel<int> chan3 = @baz;
+	baz = ^baz;
+
+	channel<int> chan2 = @baz;
+	baz = ^baz;
+
+	channel<int> chan1 = @baz;
+
+	interleaver(chan1, chan2, chan3);
+    printer(chan3);
+}

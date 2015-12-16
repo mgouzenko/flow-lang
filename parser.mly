@@ -48,7 +48,7 @@ declarations:
   | declarations struct_declaration   { StructDecl($2)::$1 }
 
 function_declaration:
-    flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE stmt_list RBRACE
+    flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE opt_stmt_list RBRACE
     {
         {
             return_type = $1;
@@ -126,6 +126,11 @@ dot_initializer_list:
 dot_initializer:
     DOT IDENTIFIER ASSIGN expr {{ dot_initializer_id = $2;
                                   dot_initializer_val = $4 }}
+
+opt_stmt_list:
+         {[]}
+  | stmt {[$1]}
+  | stmt opt_stmt_list {$1::$2}
 
 stmt_list:
     stmt {[$1]}

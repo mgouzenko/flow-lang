@@ -171,6 +171,7 @@ let compile (program : s_program) =
                         (* This will initializes the locks, etc. *)
                         "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
                   | TUnaryOp(Retrieve, _) -> " = " ^ translate_expr vdecl.s_declaration_initializer
+                  | TFunctionCall(_, _ ) -> " = " ^ translate_expr vdecl.s_declaration_initializer
                   | _ -> "")
           | List(t) ->
                   if is_arg then ""
@@ -265,8 +266,8 @@ let compile (program : s_program) =
     let translate_fdecl (fdecl : s_function_declaration) : string =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
-            then "", "_wait_for_finish();\n"
-            else "_initialize_runtime();\n",""
+            then "_initialize_runtime();\n", "_wait_for_finish();\n"
+            else "",""
         and temp_list_decl = "struct _cell* temp;\n" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
