@@ -2,7 +2,6 @@
 
 proc numGen(out int ochan){
   1 -> ochan;
-  poison ochan;
 }
 
 proc numGen2(out int ochan){
