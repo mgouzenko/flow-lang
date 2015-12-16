@@ -1,0 +1,21 @@
+// Should be able to pass a directionless channel into a function
+
+channel<int> pass_chan(channel<int> chan) {
+  return chan;
+}
+
+proc numGen(out int ochan){
+  1 -> ochan;
+  poison ochan;
+}
+
+proc printer(in int chan) {
+  print_int(@chan);
+}
+
+int main() {
+  channel<int> chan1;
+  channel<int> chan2 = pass_chan(chan1);
+  numGen(chan2);
+  printer(chan2);
+}
