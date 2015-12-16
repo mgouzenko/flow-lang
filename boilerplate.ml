@@ -62,10 +62,16 @@ int _init_channel(struct _channel *channel){
   return 0;
 }
 
+struct _channel_list_node{
+    struct _channel* chan;
+    struct _channel_list_node* next;
+};
+
 struct _pthread_node{
   pthread_t thread;
   struct _pthread_node *next;
   char* proc_name;
+  struct _channel_list_node* writing_channels;
 };
 
 struct _pthread_node* _head = NULL;
@@ -74,8 +80,20 @@ struct _pthread_node* _tail = NULL;
 pthread_mutex_t _thread_list_lock;
 pthread_mutex_t _ref_counting_lock;
 
+struct _pthread_node* _get_thread(pthread_t thread_id){
+    pthread_mutex_lock(&_thread_list_lock);
+    struct _pthread_node* curr = _head;
+    while(curr){
+        if(curr->thread == thread_id){
+            break;
+        }
+        curr = curr->next;
+    }
+    pthread_mutex_unlock(&_thread_list_lock);
+    return curr;
+}
 
-char *get_thread_name(pthread_t thread_id){
+char *_get_thread_name(pthread_t thread_id){
     if(_head == NULL)
         return \"\";
     pthread_mutex_lock(&_thread_list_lock);
@@ -98,14 +116,19 @@ char *get_thread_name(pthread_t thread_id){
     if(!channel->claimed_for_writing){ \
         channel->claimed_for_writing = 1; \
         channel->writing_thread = this_thread; \
+        struct _pthread_node* this_thread_node = _get_thread(this_thread); \
+        struct _channel_list_node* new_writing_chan = malloc(sizeof(struct _channel_list_node)); \
+        new_writing_chan->next = this_thread_node->writing_channels; \
+        new_writing_chan->chan = (struct _channel*) channel; \
+        this_thread_node->writing_channels = new_writing_chan; \
     } \
     else if(channel->writing_thread != this_thread){ \
         fprintf(stderr, \"Runtime error: \
                           proc %s (thread 0x%x) is trying to write \
                           to a channel belonging to %s (thread 0x%x)\\n\", \
-            get_thread_name(this_thread), \
+            _get_thread_name(this_thread), \
             (int) this_thread, \
-            get_thread_name(channel->writing_thread), \
+            _get_thread_name(channel->writing_thread), \
             (int) channel->writing_thread); \
         exit(1); \
     } \
@@ -128,13 +151,6 @@ MAKE_ENQUEUE_FUNC(int)
 MAKE_ENQUEUE_FUNC(char)
 MAKE_ENQUEUE_FUNC(double)
 
-#define SELECT_QUEUEING_FUNC(x) _Generic((x), \
-    int: _enqueue_int, \
-    char: _enqueue_char, \
-    struct _int_channel*: _dequeue_int)
-
-//#define CALL_ENQUEUE_FUNC(e, c, t) SELECT_QUEUEING_FUNC(e)(e, c)
-
 #define CALL_ENQUEUE_FUNC(e, c, t) _enqueue_##t(e, c)
 
 #define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
@@ -148,9 +164,9 @@ MAKE_ENQUEUE_FUNC(double)
         fprintf(stderr, \"Runtime error: \
                           proc %s (thread 0x%x) is trying to read from \
                           a channel belonging to %s (thread 0x%x)\\n\", \
-            get_thread_name(this_thread), \
+            _get_thread_name(this_thread), \
             (int) this_thread, \
-            get_thread_name(channel->reading_thread), \
+            _get_thread_name(channel->reading_thread), \
             (int) channel->reading_thread); \
         exit(1); \
     } \
@@ -206,6 +222,7 @@ pthread_t* _make_pthread_t(char* proc_name) {
       (struct _pthread_node *)malloc(sizeof(struct _pthread_node));
   new_pthread->next = NULL;
   new_pthread->proc_name = proc_name;
+  new_pthread->writing_channels = NULL;
   if(_head == NULL){
       _head = _tail = new_pthread;
   } else {
@@ -214,6 +231,17 @@ pthread_t* _make_pthread_t(char* proc_name) {
   }
   pthread_mutex_unlock(&_thread_list_lock);
   return &(new_pthread->thread);
+}
+
+void _exit_thread(){
+    struct _pthread_node* this_thread = _get_thread(pthread_self());
+    struct _channel_list_node* curr_chan = this_thread->writing_channels;
+    while(curr_chan){
+        if(!curr_chan->chan->poisoned)
+            _poison(curr_chan->chan);
+        curr_chan = curr_chan->next;
+    }
+    pthread_exit(NULL);
 }
 
 void _wait_for_finish(){

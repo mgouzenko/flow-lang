@@ -406,6 +406,7 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
                          fdecl.return_type = Proc ||
                          fdecl.function_name = "main" then false else true in
     let _, func_body = check_stmt_list env_with_args fdecl.body must_return in
+    let func_body = if fdecl.return_type != Proc then func_body else func_body@[SExitProc] in
 
     (* Create the function node to return *)
     let func_node = {

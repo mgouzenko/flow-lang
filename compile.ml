@@ -246,7 +246,7 @@ let compile (program : s_program) =
           | SContinue -> "continue;"
           | SBreak -> "break;"
           | SPoison(e) -> eval_poison_type e
-          | SExitProc -> "pthread_exit(NULL);" in
+          | SExitProc -> "_exit_thread();" in
 
     (* unpacks the arguments to a process from void *_args *)
     let unpack_process_args (process: s_function_declaration) =
