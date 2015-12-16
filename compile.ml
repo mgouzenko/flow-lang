@@ -278,7 +278,7 @@ let compile (program : s_program) =
     String.concat "\n"
     (List.map (fun decl ->
         match decl with
-          SVarDecl(vdecl) -> translate_vdecl vdecl false
+          SVarDecl(vdecl) -> translate_vdecl vdecl false ^ ";\n"
         | SFuncDecl(fdecl) -> translate_fdecl fdecl
         | SStructDecl(sdecl) -> translate_struct_decl sdecl)
     (List.rev program)) ^ "\n"

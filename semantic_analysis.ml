@@ -282,7 +282,9 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
          * after the block has been semantically analyzed. Hence, as with
          * Expr, we return the current env. *)
       | Block(stmt_list) ->
-            let _, checked_stmts = check_stmt_list env stmt_list in
+            let new_symbol_table = { parent = Some(env.symbol_table);
+                                     variables = [] } in
+            let _, checked_stmts = check_stmt_list {env with symbol_table = new_symbol_table} stmt_list in
             (env, SBlock(checked_stmts))
 
         (* A return statement must have the same return type as the
