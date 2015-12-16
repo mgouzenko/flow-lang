@@ -103,14 +103,6 @@ init_var_declaration:
                                        declaration_id   = $2;
                                        declaration_initializer = $4}}
 
-dot_initializer_list:
-    dot_initializer {[$1]}
-  | dot_initializer COMMA dot_initializer_list { $1::$3 }
-
-dot_initializer:
-    DOT IDENTIFIER ASSIGN expr {{ dot_initializer_id = $2;
-                                  dot_initializer_val = $4 }}
-
 stmt_list:
     stmt {[$1]}
   | stmt stmt_list {$1::$2}
