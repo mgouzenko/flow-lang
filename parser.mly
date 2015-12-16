@@ -74,10 +74,7 @@ arg_decl_list:
   | arg_decl COMMA arg_decl_list {$1::$3}
 
 arg_decl:
-    simple_var_declaration {match $1.declaration_type with
-                              Channel(t, dir) when dir = Nodir ->
-                                  raise (Failure "Channel argument needs direction")
-                            | _ -> $1}
+    simple_var_declaration {$1}
 
 flow_type:
     INT                       {Int}
