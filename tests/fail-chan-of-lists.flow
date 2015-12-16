@@ -1,0 +1,5 @@
+// Channels of lists not supported
+
+int main() {
+  channel<list<int>> chan; // FAIL
+}

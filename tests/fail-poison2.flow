@@ -1,0 +1,17 @@
+// Should not be able to poison an in channel 
+
+proc numGen(out int ochan){
+  1 -> ochan;
+  poison ochan;
+}
+
+proc printer(in int chan) {
+  print_int(@chan);
+  poison chan; // FAIL
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  printer(chan);
+}
