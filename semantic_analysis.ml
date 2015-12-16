@@ -218,11 +218,9 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
         in check_binop checked_e1 checked_e2 op
-
-      (* To do *)
     | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ListInitializer(expr_list) ->
-         if expr_list = [Noexpr] then TNoexpr, Void else
+         if List.length expr_list == 0 then TNoexpr, Void else
          let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
          let list_type = snd(List.hd checked_expr_list) in
          let of_same_type =
@@ -244,6 +242,7 @@ let check_variable_declaration (env: environment) (decl: variable_declaration) =
     (* Either the expression needs to match the declaration's type, or it
      * can be Noexpr (which is void) *)
     if t = decl.declaration_type || t = Void then
+        (* let _ = print_string(string_of_type t); print_string(string_of_type decl.declaration_type) in *)
         (try let _ =
             (* Try to find the a local variable of the same name. If found, it's an error. *)
             List.find
@@ -282,7 +281,9 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
          * after the block has been semantically analyzed. Hence, as with
          * Expr, we return the current env. *)
       | Block(stmt_list) ->
-            let _, checked_stmts = check_stmt_list env stmt_list in
+            let new_symbol_table = { parent = Some(env.symbol_table);
+                                     variables = [] } in
+            let _, checked_stmts = check_stmt_list {env with symbol_table = new_symbol_table} stmt_list in
             (env, SBlock(checked_stmts))
 
         (* A return statement must have the same return type as the

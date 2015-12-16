@@ -1,6 +1,0 @@
-// Function should not be able to return a channel
-
-channel <int> buildChan() {
-  channel<int> n;
-  return n; // FAIL
-}

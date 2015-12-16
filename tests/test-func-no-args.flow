@@ -1,0 +1,7 @@
+void foo(){
+	print_string("meow");
+}
+
+int main(){
+	foo();
+}

@@ -58,7 +58,15 @@ let compile (program : s_program) =
                   "CALL_ENQUEUE_FUNC(" ^
                   exp1 ^ ", " ^ exp2 ^ "," ^
                   translate_type t1 ^ ")"
-          | Assign -> exp1 ^ "=" ^ exp2
+          | Assign ->
+                  (match t1, fst typed_exp2 with
+                      List(t), TListInitializer(_) ->
+                          let temp_list_name = "_temp_" ^ exp1 in
+                          let temp_vdecl = { s_declaration_type = List(t);
+                                             s_declaration_id = temp_list_name;
+                                             s_declaration_initializer =  typed_exp2 } in
+                          translate_vdecl temp_vdecl false ^ ";\n" ^ exp1 ^ "=" ^ temp_list_name ^ ";\n"
+                    | _ -> exp1 ^ "=" ^ exp2)
                   (* let assingment = exp1 ^ "=" ^ exp2 *)
                   (* and dec_refs = "_decrease_refs(" ^ exp1 ^ ")" *)
                   (* and inc_refs = "_increase_refs(" ^ exp2 ^ ")" in *)
@@ -97,17 +105,20 @@ let compile (program : s_program) =
           | false -> "0"
         in
         let rec expr_list_to_string (expr_list : typed_expr list) =
-          List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
-             (translate_expr (List.hd expr_list)) (List.tl expr_list)
-        in
+            let translated_exprs =
+                List.rev (  List.fold_left
+                            (fun acc elm -> (translate_expr elm)::acc )
+                            [] expr_list  ) in
+            String.concat ", " translated_exprs in
+
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
             match id with
-            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
-            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
-            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
             | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
@@ -142,10 +153,8 @@ let compile (program : s_program) =
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TNoexpr, _ -> ""
 
-    in
-
     (* Translate flow variable declaration to c variable declaration *)
-    let translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
+    and translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
         let translated_type = translate_type vdecl.s_declaration_type in
         translated_type ^ " " ^
         vdecl.s_declaration_id ^ " " ^
@@ -162,6 +171,7 @@ let compile (program : s_program) =
                         (* This will initializes the locks, etc. *)
                         "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
                   | TUnaryOp(Retrieve, _) -> " = " ^ translate_expr vdecl.s_declaration_initializer
+                  | TFunctionCall(_, _ ) -> " = " ^ translate_expr vdecl.s_declaration_initializer
                   | _ -> "")
           | List(t) ->
                   if is_arg then ""
@@ -174,6 +184,7 @@ let compile (program : s_program) =
                                 (List.rev expr_list)
                           | TUnaryOp(ListTail, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
                           | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name; "_increase_refs(" ^ id_name ^ ")"]
+                          | TFunctionCall(_, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
                           | TNoexpr -> [""]
                           | _ -> raise(Failure("Invalid list initializer " ))) in
                   "= NULL; " ^ String.concat ";\n" add_fronts
@@ -255,8 +266,8 @@ let compile (program : s_program) =
     let translate_fdecl (fdecl : s_function_declaration) : string =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
-            then "", "_wait_for_finish();\n"
-            else "_initialize_runtime();\n",""
+            then "_initialize_runtime();\n", "_wait_for_finish();\n"
+            else "",""
         and temp_list_decl = "struct _cell* temp;\n" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
         (match fdecl.s_return_type with
@@ -278,7 +289,7 @@ let compile (program : s_program) =
     String.concat "\n"
     (List.map (fun decl ->
         match decl with
-          SVarDecl(vdecl) -> translate_vdecl vdecl false
+          SVarDecl(vdecl) -> translate_vdecl vdecl false ^ ";\n"
         | SFuncDecl(fdecl) -> translate_fdecl fdecl
         | SStructDecl(sdecl) -> translate_struct_decl sdecl)
     (List.rev program)) ^ "\n"

@@ -1,0 +1,12 @@
+list<int> foo(int a, int b, int c){
+	list<int> bar = [a, b, c];
+	return bar;
+}
+
+int main(){
+	list<int> baz = foo(1, 2, 3);
+	while(#baz > 0){
+		print_int(@baz);
+		baz = ^baz;
+	}
+}

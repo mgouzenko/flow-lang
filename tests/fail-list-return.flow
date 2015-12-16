@@ -1,6 +1,0 @@
-// Should not be able to return a list from a function
-
-list <int> buildList() {
-  list <int> new_list = [1,2,3];
-  return new_list; // FAIL
-}
