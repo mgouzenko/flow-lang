@@ -26,8 +26,8 @@
 %left AND OR
 %left EQ NEQ
 %left LT GT LEQ GEQ
-%right SHIFT_LEFT SHIFT_RIGHT
-%left PLUS MINUS CONCAT
+$right CONCAT
+%left PLUS MINUS
 %left TIMES DIVIDE MODULO
 %left RETRIEVE
 %left DOT
