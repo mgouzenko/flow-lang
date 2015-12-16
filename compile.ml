@@ -122,7 +122,6 @@ let compile (program : s_program) =
             | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
             | "println" ->  "printf(\"\\n\");\n" ^ "fflush(stdout)"
-            | "len" -> expr_list_to_string expr_list ^ ".size"
             | "rand" -> " (double)rand() / (double)RAND_MAX "
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
