@@ -291,7 +291,9 @@ let rec check_stmt (env: environment) (stmt: stmt) : (environment * s_stmt) =
       | Return(e) ->
             let expr_details, t = check_expr env e in
             (match env.return_type with
-                  Some(rtype) -> if t = rtype then (env, SReturn(check_expr env e))
+                | Some(Proc)  -> if t = Void then env, SExitProc
+                                 else raise(Failure("Atempting return value from process"))
+                | Some(rtype) -> if t = rtype then (env, SReturn(check_expr env e))
                                  else raise(Failure("Expression does not match return_type"))
                 | None -> raise(Failure("Return statement not in function")))
 
@@ -406,7 +408,8 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
     let _, func_body = check_stmt_list env_with_args fdecl.body must_return in
 
     (* Create the function node to return *)
-    let func_node = { s_return_type = fdecl.return_type;
+    let func_node = {
+      s_return_type = fdecl.return_type;
       s_function_name = fdecl.function_name;
       s_arguments = List.rev arg_decl_list; (* We collected list in reverse order *)
       s_has_definition = true;

@@ -1,0 +1,5 @@
+// Channels of channels not supported
+
+int main() {
+  channel<channel<int>> chan; // FAIL
+}

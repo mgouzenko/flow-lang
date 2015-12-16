@@ -1,0 +1,21 @@
+// Channels should be passed by reference
+
+void write_chan(channel<int> chan) {
+  2 -> chan; // FAIL
+}
+
+proc numGen(out int ochan){
+  1 -> ochan;
+  poison ochan;
+}
+
+proc printer(in int chan) {
+  print_int(@chan);
+}
+
+int main() {
+  channel<int> chan;
+  write_chan(chan);
+  numGen(chan);
+  printer(chan);
+}

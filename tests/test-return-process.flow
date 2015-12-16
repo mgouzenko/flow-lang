@@ -1,0 +1,17 @@
+// Should be able to return from a process
+
+proc numGen(out int ochan){
+  1 -> ochan;
+  poison ochan;
+  return;
+}
+
+proc printer(in int chan) {
+  while(chan){ print_int(@chan);}
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  printer(chan);
+}

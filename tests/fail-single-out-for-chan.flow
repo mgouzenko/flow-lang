@@ -1,0 +1,22 @@
+// You should only be allowed to connect a input channel to single process
+
+proc numGen(out int ochan){
+  1 -> ochan;
+  poison ochan;
+}
+
+proc numGen2(out int ochan){
+  2 -> ochan;
+  poison ochan;
+}
+
+proc printer(in int chan) {
+  print_int(@chan);
+}
+
+int main() {
+  channel<int> chan;
+  numGen(chan);
+  numGen2(chan);
+  printer(chan);
+}
