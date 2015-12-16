@@ -105,17 +105,20 @@ let compile (program : s_program) =
           | false -> "0"
         in
         let rec expr_list_to_string (expr_list : typed_expr list) =
-          List.fold_left (fun acc elm -> acc ^ ", " ^ (translate_expr elm))
-             (translate_expr (List.hd expr_list)) (List.tl expr_list)
-        in
+            let translated_exprs =
+                List.rev (  List.fold_left
+                            (fun acc elm -> (translate_expr elm)::acc )
+                            [] expr_list  ) in
+            String.concat ", " translated_exprs in
+
         (* Translate flow type functions, including built-ins, to c function calls *)
         let translate_function (id : string) (expr_list : typed_expr list) : string =
             match id with
-            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
-            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
-            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n" 
+            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
             | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ");\n"
                 ^ "fflush(stdout)"
