@@ -81,7 +81,7 @@ let rec string_of_type = function
     | Channel(t, In) -> "in " ^ string_of_type t
     | Channel(t, Out) -> "out " ^ string_of_type t
     | List(t) -> "list<" ^ string_of_type t ^ ">"
-    | Struct(s) -> s in
+in
 
 let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) : typed_expr =
     let expr_details1, t1 = e1
@@ -218,7 +218,6 @@ let rec check_expr (env : environment) (e : expr) : typed_expr =
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
         in check_binop checked_e1 checked_e2 op
-    | StructInitializer(dot_init_list) -> TNoexpr, Void
     | ListInitializer(expr_list) ->
          if List.length expr_list == 0 then TNoexpr, Void else
          let checked_expr_list = List.map (fun exp -> check_expr env exp) expr_list in
@@ -409,9 +408,6 @@ let check_function_declaration (env: environment) (fdecl: function_declaration) 
     (* Return the original environment, with the current function appended *)
     ({ env with funcs = new_funcs }, func_node) in
 
-let check_struct_declaration (env: environment) (decl: struct_declaration) : (environment * s_struct_declaration) =
-    raise(Failure("Not implemented")) in
-
 (* Check declaration returns a new environment, which is populated with the
  * newly declared symbol *)
 let check_declaration (env: environment) (decl: declaration) : (environment * s_declaration) =
@@ -422,9 +418,7 @@ let check_declaration (env: environment) (decl: declaration) : (environment * s_
     | FuncDecl(fdecl) ->
           let new_env, checked_fdecl = check_function_declaration env fdecl in
           (new_env, SFuncDecl(checked_fdecl))
-    | StructDecl(sdecl) ->
-          let new_env, checked_sdecl = check_struct_declaration env sdecl in
-          (new_env, SStructDecl(checked_sdecl)) in
+in
 
 (* Here, we set up the initial environment. The return type is None, meaning
  * that we have yet to descend into semantically analyzing functions. The

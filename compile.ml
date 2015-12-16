@@ -21,7 +21,6 @@ let compile (program : s_program) =
                   let _ = List.find (fun e -> t = e) supported_channels in
                   "struct _" ^ translate_type t ^ "_channel* "
               with Not_found -> raise (Failure("Channel not supported")))
-      | Struct(id) -> "struct " ^ id
       | List(t) ->
               (try
                   let _ = List.find (fun e -> t = e) supported_lists in
@@ -148,8 +147,6 @@ let compile (program : s_program) =
             translate_unary_op unary_op expr
         | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list
         | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
-        | TStructInitializer(dot_initializer_list), _ -> "TODO"
-        (* TODO need to work on initializing list with add_back and front *)
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TNoexpr, _ -> ""
 
@@ -280,16 +277,12 @@ let compile (program : s_program) =
             Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
           | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^ temp_list_decl ^
         String.concat "" (List.map translate_stmt fdecl.s_body) ^ closing_stmts ^ "\n}"
-
-    (* Tranlsate flow struct declaration to c struct declaration *)
-    and translate_struct_decl (sdecl: s_struct_declaration) = "Sdecl" in
-
+    in
     (* Translate the flow program to a c program *)
     boilerplate_header ^
     String.concat "\n"
     (List.map (fun decl ->
         match decl with
           SVarDecl(vdecl) -> translate_vdecl vdecl false ^ ";\n"
-        | SFuncDecl(fdecl) -> translate_fdecl fdecl
-        | SStructDecl(sdecl) -> translate_struct_decl sdecl)
+        | SFuncDecl(fdecl) -> translate_fdecl fdecl)
     (List.rev program)) ^ "\n"

@@ -7,7 +7,7 @@
 %token BREAK CONTINUE VOID
 %token POISON
 %token OR AND NOT
-%token DOUBLE CHAR BOOL INT STRING LIST STRUCT
+%token DOUBLE CHAR BOOL INT STRING LIST 
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
 %token LIST_LENGTH LIST_HEAD LIST_TAIL
@@ -45,7 +45,6 @@ declarations:
     /* nothing */ { [] }
   | declarations var_declaration SEMI { VarDecl($2)::$1  }
   | declarations function_declaration { FuncDecl($2)::$1 }
-  | declarations struct_declaration   { StructDecl($2)::$1 }
 
 function_declaration:
     flow_type IDENTIFIER LPAREN arg_decl_list RPAREN LBRACE opt_stmt_list RBRACE
@@ -106,18 +105,6 @@ init_var_declaration:
   | flow_type IDENTIFIER ASSIGN expr {{declaration_type = $1;
                                        declaration_id   = $2;
                                        declaration_initializer = $4}}
-
-struct_declaration:
-  STRUCT IDENTIFIER LBRACE stmt_list RBRACE {
-                                              let decls = List.map (fun e -> match e with
-                                                 Declaration(decl) -> decl
-                                               | _ -> raise (Failure ("Struct member " ^
-                                                            "definitions must be" ^
-                                                            "declarations"))) $4 in
-                                              {struct_name = $2;
-                                               struct_members = decls;
-                                              }
-                                            }
 
 dot_initializer_list:
     dot_initializer {[$1]}
@@ -189,7 +176,6 @@ expr:
   | CHAR_LITERAL {CharLiteral($1)}
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
-  | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
   | LBRACKET expr_list RBRACKET {ListInitializer($2)}
   | RETRIEVE IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
