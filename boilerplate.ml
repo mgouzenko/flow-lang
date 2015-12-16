@@ -62,6 +62,36 @@ int _init_channel(struct _channel *channel){
   return 0;
 }
 
+struct _pthread_node{
+  pthread_t thread;
+  struct _pthread_node *next;
+  char* proc_name;
+};
+
+struct _pthread_node* _head = NULL;
+struct _pthread_node* _tail = NULL;
+
+pthread_mutex_t _thread_list_lock;
+pthread_mutex_t _ref_counting_lock;
+
+
+char *get_thread_name(pthread_t thread_id){
+    if(_head == NULL)
+        return \"\";
+    pthread_mutex_lock(&_thread_list_lock);
+    char* name = \"\";
+    struct _pthread_node* curr = _head;
+    while(curr){
+        if(curr->thread == thread_id){
+            name = curr->proc_name;
+            break;
+        }
+        curr = curr->next;
+    }
+    pthread_mutex_unlock(&_thread_list_lock);
+    return name;
+}
+
 #define MAKE_ENQUEUE_FUNC(type) type _enqueue_##type(type element, struct _##type##_channel *channel){ \
     pthread_mutex_lock(&channel->lock); \
     pthread_t this_thread = pthread_self(); \
@@ -70,8 +100,12 @@ int _init_channel(struct _channel *channel){
         channel->writing_thread = this_thread; \
     } \
     else if(channel->writing_thread != this_thread){ \
-        fprintf(stderr, \"Thread 0x%x is trying to write to a channel belonging to thread 0x%x\\n\", \
+        fprintf(stderr, \"Runtime error: \
+                          proc %s (thread 0x%x) is trying to write \
+                          to a channel belonging to %s (thread 0x%x)\\n\", \
+            get_thread_name(this_thread), \
             (int) this_thread, \
+            get_thread_name(channel->writing_thread), \
             (int) channel->writing_thread); \
         exit(1); \
     } \
@@ -111,8 +145,12 @@ MAKE_ENQUEUE_FUNC(double)
         channel->reading_thread = this_thread; \
     } \
     else if(channel->reading_thread != this_thread){ \
-        fprintf(stderr, \"Thread 0x%x is trying to read from a channel belonging to thread 0x%x\\n\", \
+        fprintf(stderr, \"Runtime error: \
+                          proc %s (thread 0x%x) is trying to read from \
+                          a channel belonging to %s (thread 0x%x)\\n\", \
+            get_thread_name(this_thread), \
             (int) this_thread, \
+            get_thread_name(channel->reading_thread), \
             (int) channel->reading_thread); \
         exit(1); \
     } \
@@ -156,28 +194,18 @@ bool _wait_for_more(struct _channel *channel) {
     return true;
 }
 
-struct _pthread_node{
-  pthread_t thread;
-  struct _pthread_node *next;
-};
-
-struct _pthread_node* _head = NULL;
-struct _pthread_node* _tail = NULL;
-
-pthread_mutex_t _thread_list_lock;
-pthread_mutex_t _ref_counting_lock;
-
 void _initialize_runtime(){
     pthread_mutex_init(&_thread_list_lock, NULL);
     pthread_mutex_init(&_ref_counting_lock, NULL);
     srand(time(NULL));
 }
 
-pthread_t* _make_pthread_t() {
+pthread_t* _make_pthread_t(char* proc_name) {
   pthread_mutex_lock(&_thread_list_lock);
   struct _pthread_node *new_pthread =
       (struct _pthread_node *)malloc(sizeof(struct _pthread_node));
   new_pthread->next = NULL;
+  new_pthread->proc_name = proc_name;
   if(_head == NULL){
       _head = _tail = new_pthread;
   } else {

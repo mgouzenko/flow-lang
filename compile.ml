@@ -126,7 +126,7 @@ let compile (program : s_program) =
             | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
         in
         let translate_process_call (id : string) (expr_list : typed_expr list) =
-          let pthread_decl = "pthread_t* _t = _make_pthread_t();\n" in
+          let pthread_decl = "pthread_t* _t = _make_pthread_t(\"" ^ id ^ "\");\n" in
           let malloced_args = "struct _" ^ id ^ "_args* _margs = malloc(sizeof(struct _" ^ id ^ "_args));\n" in
           let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
           let copy_struct = "memcpy((void*) _margs, (void*) &_args, sizeof(typeof(_args)));\n" in
