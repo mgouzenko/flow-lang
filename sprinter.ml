@@ -144,6 +144,7 @@ let rec print_string_of_stmt = function
             and inode = print_string_of_expr chan_id in 
             let _ = print_dot_edge pnode inode
             in pnode
+    | SExitProc -> print_dot_node "exit"
 
 let print_string_of_func_decl fdecl =
     let fdecl_node = print_dot_node "fdecl"

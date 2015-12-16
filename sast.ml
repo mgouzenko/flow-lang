@@ -38,6 +38,7 @@ type s_stmt =
   | SContinue
   | SBreak
   | SPoison of typed_expr
+  | SExitProc
 
 type s_function_declaration = {
     s_return_type: flow_type;
