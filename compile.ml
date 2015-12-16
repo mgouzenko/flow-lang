@@ -58,7 +58,15 @@ let compile (program : s_program) =
                   "CALL_ENQUEUE_FUNC(" ^
                   exp1 ^ ", " ^ exp2 ^ "," ^
                   translate_type t1 ^ ")"
-          | Assign -> exp1 ^ "=" ^ exp2
+          | Assign ->
+                  (match t1, fst typed_exp2 with
+                      List(t), TListInitializer(_) ->
+                          let temp_list_name = "_temp_" ^ exp1 in
+                          let temp_vdecl = { s_declaration_type = List(t);
+                                             s_declaration_id = temp_list_name;
+                                             s_declaration_initializer =  typed_exp2 } in
+                          translate_vdecl temp_vdecl false ^ ";\n" ^ exp1 ^ "=" ^ temp_list_name ^ ";\n"
+                    | _ -> exp1 ^ "=" ^ exp2)
                   (* let assingment = exp1 ^ "=" ^ exp2 *)
                   (* and dec_refs = "_decrease_refs(" ^ exp1 ^ ")" *)
                   (* and inc_refs = "_increase_refs(" ^ exp2 ^ ")" in *)
@@ -142,10 +150,8 @@ let compile (program : s_program) =
         | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
         | TNoexpr, _ -> ""
 
-    in
-
     (* Translate flow variable declaration to c variable declaration *)
-    let translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
+    and translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
         let translated_type = translate_type vdecl.s_declaration_type in
         translated_type ^ " " ^
         vdecl.s_declaration_id ^ " " ^
@@ -174,6 +180,7 @@ let compile (program : s_program) =
                                 (List.rev expr_list)
                           | TUnaryOp(ListTail, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
                           | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name; "_increase_refs(" ^ id_name ^ ")"]
+                          | TFunctionCall(_, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
                           | TNoexpr -> [""]
                           | _ -> raise(Failure("Invalid list initializer " ))) in
                   "= NULL; " ^ String.concat ";\n" add_fronts

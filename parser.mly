@@ -169,7 +169,8 @@ expr_opt:
   | expr {$1}
 
 expr_list:
-    expr {[$1]}
+         {[]}
+  | expr {[$1]}
   | expr COMMA expr_list {$1::$3}
 
 expr_opt_list:
@@ -184,7 +185,7 @@ expr:
   | BOOL_LITERAL {BoolLiteral($1)}
   | IDENTIFIER {Id($1)}
   | LBRACE dot_initializer_list RBRACE {StructInitializer($2)}
-  | LBRACKET expr_opt_list RBRACKET {ListInitializer($2)}
+  | LBRACKET expr_list RBRACKET {ListInitializer($2)}
   | RETRIEVE IDENTIFIER {UnaryOp(Retrieve, Id($2))}
   | expr WRITE_CHANNEL IDENTIFIER {BinOp($1, Send, Id($3))}
   | function_call {$1}
