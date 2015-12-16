@@ -1,0 +1,129 @@
+proc comparator (in int a_in, in int b_in, out int a_out, out int b_out, bool ascending) {
+	while(a_in && b_in) {
+		int larger;
+		int smaller;
+
+		int a = @a_in;
+		int b = @b_in;
+		
+		if (a < b) {
+			smaller = a;
+			larger = b;
+		} else {
+			smaller = b;
+			larger = a;
+		}
+
+		if(ascending) {
+			smaller -> a_out;
+			larger -> b_out;
+		} else {
+			larger -> a_out;
+			smaller -> b_out;
+		}
+	}
+	poison a_out;
+	poison b_out;
+}
+
+proc muxer4_1(in int a, in int b, in int c, in int d, out int out_chan) {
+	while(true){
+		if(a) {
+			@a -> out_chan;
+		} else { break; }
+		if(b) {
+			@b -> out_chan;
+		} else { break; }
+		if(c) {
+			@c -> out_chan;
+		} else { break; }
+		if(d) {
+			@d -> out_chan;
+		} else { break; }
+	}
+	poison out_chan;
+}
+
+proc num_gen(out int nums) {
+	3 -> nums;
+	2 -> nums;
+	1 -> nums;
+	5 -> nums;
+	poison nums;
+}
+
+proc muxer1_4(out int a, out int b, out int c, out int d, in int in_chan) {
+	while(true){
+
+		if(in_chan) {
+			@in_chan -> a;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> b;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> c;
+		} else { break; }
+
+		if(in_chan) {
+			@in_chan -> d;
+		} else { break; }
+	}
+	poison a;
+	poison b;
+	poison c;
+	poison d;
+}
+
+proc printer(in int n) {
+	while(n) {
+		print_int(@n);
+		println();
+	}
+}
+
+int main () {
+	
+	channel<int> a;
+	channel<int> b;
+	channel<int> c;
+	channel<int> d;
+
+	channel<int> e;
+	channel<int> f;
+	channel<int> g;
+	channel<int> h;
+
+	channel<int> i;
+	channel<int> j;
+	channel<int> k;
+	channel<int> l;
+
+	channel<int> m;
+	channel<int> n;
+	channel<int> o;
+	channel<int> p;
+
+	comparator(a, b, e, f, true);
+	comparator(c, d, g, h, false);
+
+	comparator(e, g, i, j, true);
+	comparator(f, h, k, l, true);
+
+	comparator(i, k, m, n, true);
+	comparator(j, l, o, p, true);
+
+	channel<int> nums;
+
+	num_gen(nums);
+	muxer1_4(a, b, c, d, nums);
+
+	channel<int> mux_out;
+
+	muxer4_1(m, n, o, p, mux_out);
+	printer(mux_out);
+
+
+}
