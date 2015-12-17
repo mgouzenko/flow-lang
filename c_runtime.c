@@ -1,12 +1,10 @@
-let boilerplate_header =
-"
- #include <assert.h>
- #include <pthread.h>
- #include <stdio.h>
- #include <stdlib.h>
- #include <stdbool.h>
- #include <string.h>
- #include <time.h>
+#include <assert.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
 
 #define BASIC_CHANNEL_MEMBERS pthread_mutex_t lock; \
                                int size; \
@@ -44,13 +42,13 @@ struct _double_channel{
 
 int _init_channel(struct _channel *channel){
   if(pthread_mutex_init(&channel->lock, NULL) != 0){
-      printf(\"Mutex init failed\");
+      printf("Mutex init failed");
       return 1;
   }
 
   if(pthread_cond_init(&channel->write_ready, NULL) +
           pthread_cond_init(&channel->read_ready, NULL ) != 0){
-      printf(\"Cond init failed\");
+      printf("Cond init failed");
       return 1;
   }
   channel->claimed_for_reading = 0;
@@ -95,9 +93,9 @@ struct _pthread_node* _get_thread(pthread_t thread_id){
 
 char *_get_thread_name(pthread_t thread_id){
     if(_head == NULL)
-        return \"\";
+        return "";
     pthread_mutex_lock(&_thread_list_lock);
-    char* name = \"\";
+    char* name = "";
     struct _pthread_node* curr = _head;
     while(curr){
         if(curr->thread == thread_id){
@@ -123,20 +121,18 @@ char *_get_thread_name(pthread_t thread_id){
         this_thread_node->writing_channels = new_writing_chan; \
     } \
     else if(channel->writing_thread != this_thread){ \
-        fprintf(stderr, \"Runtime error: \
-                          proc %s (thread 0x%x) is trying to write \
-                          to a channel belonging to %s (thread 0x%x)\\n\", \
+        fprintf(stderr, "Runtime error: proc %s (thread 0x%x) is trying to write to a channel belonging to %s (thread 0x%x)\n", \
             _get_thread_name(this_thread), \
             (int) this_thread, \
             _get_thread_name(channel->writing_thread), \
-            (int) channel->writing_thread); \
+            (int) channel->writing_thread ); \
         exit(1); \
     } \
     while(channel->size >= channel->MAX_SIZE) \
         pthread_cond_wait(&channel->write_ready, &channel->lock); \
     assert(channel->size < channel->MAX_SIZE); \
     if(channel->poisoned){ \
-        fprintf(stderr, \"Attempting to read from a channel that is empty and poisoned\"); \
+        fprintf(stderr, "Attempting to read from a channel that is empty and poisoned"); \
         exit(1); \
     } \
     channel->queue[channel->back] = element; \
@@ -161,9 +157,7 @@ MAKE_ENQUEUE_FUNC(double)
         channel->reading_thread = this_thread; \
     } \
     else if(channel->reading_thread != this_thread){ \
-        fprintf(stderr, \"Runtime error: \
-                          proc %s (thread 0x%x) is trying to read from \
-                          a channel belonging to %s (thread 0x%x)\\n\", \
+        fprintf(stderr, "Runtime error: proc %s (thread 0x%x) is trying to read from a channel belonging to %s (thread 0x%x)\n", \
             _get_thread_name(this_thread), \
             (int) this_thread, \
             _get_thread_name(channel->reading_thread), \
@@ -171,7 +165,7 @@ MAKE_ENQUEUE_FUNC(double)
         exit(1); \
     } \
     if(channel->size == 0){ \
-        fprintf(stderr, \"Attempting to read from empty channel\"); \
+        fprintf(stderr, "Attempting to read from empty channel"); \
         exit(1); \
     } \
     type result = channel->queue[channel->front]; \
@@ -250,7 +244,7 @@ void _wait_for_finish(){
         pthread_join(curr->thread, NULL);
         curr = curr->next;
     }
-}\n
+}
 
 union _payload{
 	int _int;
@@ -283,7 +277,7 @@ struct _cell* _add_front(union _payload element, struct _cell *tail){
 
 struct _cell* _get_tail(struct _cell* head){
 	if(!head){
-		fprintf(stderr, \"Runtime error: cannot get tail of empty list\");
+		fprintf(stderr, "Runtime error: cannot get tail of empty list");
 		exit(1);
 	}
 
@@ -321,7 +315,7 @@ void _increase_refs(struct _cell* head){
 
 union _payload _get_front(struct _cell* head){
     if (!head) {
-        fprintf(stderr, \"Runtime error: cannot get head of empty list\");
+        fprintf(stderr, "Runtime error: cannot get head of empty list");
         exit(1);
     }
 
@@ -332,5 +326,3 @@ int _get_length(struct _cell* head){
 	if(!head) return 0;
 	return head->length;
 }
- 
-"
