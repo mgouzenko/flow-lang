@@ -1,12 +1,12 @@
 open Ast;;
 open Sast;;
 
-type action = Ast | Sast | Compile
+type action = Ast | Sast | Compile | Dot
 
 let _ =
   let action, file =
       if Array.length Sys.argv > 2 then
-          (List.assoc Sys.argv.(1) [ ("-a", Ast); ("-c", Compile); ("-s", Sast);],
+          (List.assoc Sys.argv.(1) [ ("-a", Ast); ("-c", Compile); ("-d", Dot); ("-s", Sast);],
           open_in Sys.argv.(2))
       else (Compile, open_in Sys.argv.(1)) in
   let lexbuf = Lexing.from_channel file in
@@ -31,4 +31,5 @@ let _ =
       let _ = Printf.fprintf outfile "%s" graph in
       let _ = close_out outfile in
       Sys.command ("dot -Tpng out.dot -o out.png"))
-  | Compile ->  print_string (Compile.compile sprogram)
+  | Compile ->  print_string (Compile.compile sprogram false)
+  | Dot -> print_string (Compile.compile sprogram true)

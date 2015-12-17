@@ -108,7 +108,15 @@ char *_get_thread_name(pthread_t thread_id){
     return name;
 }
 
-#define MAKE_ENQUEUE_FUNC(type) type _enqueue_##type(type element, struct _##type##_channel *channel){ \
+void _print_dot_node(struct _channel* chan){
+	fprintf(stderr, "{%d[label=%s]}->{%d[label=%s]}\n",
+			(int) chan->writing_thread,
+			_get_thread_name(chan->writing_thread),
+			(int) chan->reading_thread,
+			_get_thread_name(chan->reading_thread));
+}
+
+#define MAKE_ENQUEUE_FUNC(type) type _enqueue_##type(type element, struct _##type##_channel *channel, bool dot_print){ \
     pthread_mutex_lock(&channel->lock); \
     pthread_t this_thread = pthread_self(); \
     if(!channel->claimed_for_writing){ \
@@ -119,6 +127,8 @@ char *_get_thread_name(pthread_t thread_id){
         new_writing_chan->next = this_thread_node->writing_channels; \
         new_writing_chan->chan = (struct _channel*) channel; \
         this_thread_node->writing_channels = new_writing_chan; \
+		if(channel->claimed_for_reading && dot_print) \
+			_print_dot_node((struct _channel*) channel); \
     } \
     else if(channel->writing_thread != this_thread){ \
         fprintf(stderr, "Runtime error: proc %s (thread 0x%x) is trying to write to a channel belonging to %s (thread 0x%x)\n", \
@@ -147,14 +157,16 @@ MAKE_ENQUEUE_FUNC(int)
 MAKE_ENQUEUE_FUNC(char)
 MAKE_ENQUEUE_FUNC(double)
 
-#define CALL_ENQUEUE_FUNC(e, c, t) _enqueue_##t(e, c)
+#define CALL_ENQUEUE_FUNC(e, c, t, dot) _enqueue_##t(e, c, dot)
 
-#define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel){ \
+#define MAKE_DEQUEUE_FUNC(type) type _dequeue_##type(struct _##type##_channel *channel, bool dot_print){ \
     pthread_mutex_lock(&channel->lock); \
     pthread_t this_thread = pthread_self(); \
     if(!channel->claimed_for_reading){ \
         channel->claimed_for_reading = 1; \
         channel->reading_thread = this_thread; \
+		if(channel->claimed_for_writing && dot_print) \
+			_print_dot_node((struct _channel*) channel); \
     } \
     else if(channel->reading_thread != this_thread){ \
         fprintf(stderr, "Runtime error: proc %s (thread 0x%x) is trying to read from a channel belonging to %s (thread 0x%x)\n", \
@@ -180,7 +192,7 @@ MAKE_DEQUEUE_FUNC(int)
 MAKE_DEQUEUE_FUNC(char)
 MAKE_DEQUEUE_FUNC(double)
 
-#define CALL_DEQUEUE_FUNC(c, t) _dequeue_##t(c)
+#define CALL_DEQUEUE_FUNC(c, t, dot) _dequeue_##t(c, dot)
 
 void _poison(struct _channel * channel) {
     pthread_mutex_lock(&channel->lock);
@@ -204,10 +216,12 @@ bool _wait_for_more(struct _channel *channel) {
     return true;
 }
 
-void _initialize_runtime(){
+void _initialize_runtime(bool print_dot){
     pthread_mutex_init(&_thread_list_lock, NULL);
     pthread_mutex_init(&_ref_counting_lock, NULL);
     srand(time(NULL));
+	if(print_dot)
+		fprintf(stderr, "digraph G{\n");
 }
 
 pthread_t* _make_pthread_t(char* proc_name) {
@@ -238,12 +252,14 @@ void _exit_thread(){
     pthread_exit(NULL);
 }
 
-void _wait_for_finish(){
+void _wait_for_finish(bool print_dot){
     struct _pthread_node *curr = _head;
     while(curr){
         pthread_join(curr->thread, NULL);
         curr = curr->next;
     }
+	if(print_dot)
+		fprintf(stderr, "}");
 }
 
 union _payload{

@@ -5,7 +5,9 @@ open Boilerplate;;
 let supported_channels = [Int; Char; Double]
 let supported_lists = [Int; Char; Double; Channel(Int, Nodir)]
 
-let compile (program : s_program) =
+let compile (program : s_program) (dot: bool) =
+
+    let print_dot = if dot then "true" else "false" in
 
     (* Translate flow type to c type *)
     let rec translate_type (ftype: flow_type) = match ftype with
@@ -56,7 +58,7 @@ let compile (program : s_program) =
           | Send ->
                   "CALL_ENQUEUE_FUNC(" ^
                   exp1 ^ ", " ^ exp2 ^ "," ^
-                  translate_type t1 ^ ")"
+                  translate_type t1 ^ ", " ^ print_dot ^ ")"
           | Assign ->
                   (match t1, fst typed_exp2 with
                       List(t), TListInitializer(_) ->
@@ -85,7 +87,7 @@ let compile (program : s_program) =
           | Retrieve ->
                   (match snd typed_expr with (* TODO: We may be able to remove this pattern match *)
                       Channel(t, dir) ->
-                          "CALL_DEQUEUE_FUNC(" ^ exp ^ "," ^ translate_type t ^ ")"
+                          "CALL_DEQUEUE_FUNC(" ^ exp ^ "," ^ translate_type t ^ ", " ^ print_dot ^")"
                     | List(t) ->
                             let type_to_union_element = (function
                                 Int -> "_int"
@@ -263,7 +265,7 @@ let compile (program : s_program) =
     let translate_fdecl (fdecl : s_function_declaration) : string =
         let opening_stmts, closing_stmts =
             if fdecl.s_function_name = "main"
-            then "_initialize_runtime();\n", "_wait_for_finish();\n"
+            then "_initialize_runtime(" ^ print_dot ^ ");\n", "_wait_for_finish(" ^ print_dot ^ ");\n"
             else "",""
         and temp_list_decl = "struct _cell* temp;\n" in
         let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in

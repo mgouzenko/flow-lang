@@ -1,0 +1,15 @@
+proc writer(out int chan){
+	1->chan;
+	2->chan;
+	3->chan;
+}
+
+proc printer(in int chan){
+	while(chan){ print_int(@chan); }
+}
+
+int main(){
+	channel<int> test;
+	printer(test);
+	writer(test);
+}
