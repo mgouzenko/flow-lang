@@ -26,7 +26,7 @@
 %left AND OR
 %left EQ NEQ
 %left LT GT LEQ GEQ
-$right CONCAT
+%right CONCAT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
 %left RETRIEVE

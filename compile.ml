@@ -1,290 +1,375 @@
-open Ast;;
-open Sast;;
-open Boilerplate;;
-
-let supported_channels = [Int; Char; Double]
-let supported_lists = [Int; Char; Double; Channel(Int, Nodir)]
-
-let compile (program : s_program) (dot: bool) =
-
-    let print_dot = if dot then "true" else "false" in
-
-    (* Translate flow type to c type *)
-    let rec translate_type (ftype: flow_type) = match ftype with
-        Int -> "int"
-      | Double -> "double"
-      | Bool -> "int"
-      | Char -> "char"
-      | Void -> "void"
-      | Proc -> "void*"
-      | String -> "char *"
-      | Channel(t, dir) ->
-              (try
-                  let _ = List.find (fun e -> t = e) supported_channels in
-                  "struct _" ^ translate_type t ^ "_channel* "
-              with Not_found -> raise (Failure("Channel not supported")))
-      | List(t) ->
-              (try
-                  let _ = List.find (fun e -> t = e) supported_lists in
-                  "struct _cell *"
-              with Not_found -> raise (Failure("List not supported"))) in
-
-    (* Check that && and || for channels use _wait_for_more *)
-    let check_wait_for_more exp t =
-      match t with
-        Channel(_,_) -> "_wait_for_more( (struct _channel*) " ^ exp ^ ")"
-      | _ -> exp
+open Ast
+  
+open Sast
+  
+open Boilerplate
+  
+let supported_channels = [ Int; Char; Double ]
+  
+let supported_lists = [ Int; Char; Double; Channel (Int, Nodir) ]
+  
+let compile (program : s_program) (dot : bool) =
+  let print_dot = if dot then "true" else "false" in
+  (* Translate flow type to c type *)
+  let rec translate_type (ftype : flow_type) =
+    match ftype with
+    | Int -> "int"
+    | Double -> "double"
+    | Bool -> "int"
+    | Char -> "char"
+    | Void -> "void"
+    | Proc -> "void*"
+    | String -> "char *"
+    | Channel (t, dir) ->
+        (try
+           let _ = List.find (fun e -> t = e) supported_channels
+           in "struct _" ^ ((translate_type t) ^ "_channel* ")
+         with | Not_found -> raise (Failure "Channel not supported"))
+    | List t ->
+        (try
+           let _ = List.find (fun e -> t = e) supported_lists
+           in "struct _cell *"
+         with | Not_found -> raise (Failure "List not supported")) in
+  (* Check that && and || for channels use _wait_for_more *)
+  let check_wait_for_more exp t =
+    match t with
+    | Channel (_, _) -> "_wait_for_more( (struct _channel*) " ^ (exp ^ ")")
+    | _ -> exp in
+  let rec translate_expr (expr : typed_expr) =
+    let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op)
+                         (typed_exp2 : typed_expr) =
+      let t1 = snd typed_exp1
+      and t2 = snd typed_exp2
+      and exp1 = translate_expr typed_exp1
+      and exp2 = translate_expr typed_exp2
+      in
+        match bin_op with
+        | Plus -> exp1 ^ ("+" ^ exp2)
+        | Minus -> exp1 ^ ("-" ^ exp2)
+        | Times -> exp1 ^ ("*" ^ exp2)
+        | Divide -> exp1 ^ ("/" ^ exp2)
+        | Modulo -> exp1 ^ ("%" ^ exp2)
+        | Eq -> exp1 ^ ("==" ^ exp2)
+        | (*TODO pattern match against string type so string comparison can be done*)
+            Neq -> exp1 ^ ("!=" ^ exp2)
+        | Lt -> exp1 ^ ("<" ^ exp2)
+        | Gt -> exp1 ^ (">" ^ exp2)
+        | Leq -> exp1 ^ ("<=" ^ exp2)
+        | Geq -> exp1 ^ (">=" ^ exp2)
+        | And ->
+            (check_wait_for_more exp1 t1) ^
+              ("&&" ^ (check_wait_for_more exp2 t2))
+        | Or ->
+            (check_wait_for_more exp1 t1) ^
+              ("||" ^ (check_wait_for_more exp2 t2))
+        | Send ->
+            "CALL_ENQUEUE_FUNC(" ^
+              (exp1 ^
+                 (", " ^
+                    (exp2 ^
+                       ("," ^
+                          ((translate_type t1) ^ (", " ^ (print_dot ^ ")")))))))
+        | Assign ->
+            (match (t1, (fst typed_exp2)) with
+             | (List t, TListInitializer _) ->
+                 let temp_list_name = "_temp_" ^ exp1 in
+                 let temp_vdecl =
+                   {
+                     s_declaration_type = List t;
+                     s_declaration_id = temp_list_name;
+                     s_declaration_initializer = typed_exp2;
+                   }
+                 in
+                   (translate_vdecl temp_vdecl false) ^
+                     (";\n" ^ (exp1 ^ ("=" ^ (temp_list_name ^ ";\n"))))
+             | _ -> exp1 ^ ("=" ^ exp2))
+        | (* let assingment = exp1 ^ "=" ^ exp2 *)
+            (* and dec_refs = "_decrease_refs(" ^ exp1 ^ ")" *)
+            (* and inc_refs = "_increase_refs(" ^ exp2 ^ ")" in *)
+            (* (match t1 with *) (*     List(_) -> String.concat "\n;"  *)
+            Concat ->
+            "_add_front( (union _payload) " ^ (exp1 ^ (", " ^ (exp2 ^ ")"))) in
+    let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
+      let exp = translate_expr typed_expr
+      in
+        match unary_op with
+        | Not -> "!" ^ exp
+        | Negate -> "-" ^ exp
+        | Retrieve ->
+            (match snd typed_expr with
+             | (* TODO: We may be able to remove this pattern match *)
+                 Channel (t, dir) ->
+                 "CALL_DEQUEUE_FUNC(" ^
+                   (exp ^
+                      ("," ^
+                         ((translate_type t) ^ (", " ^ (print_dot ^ ")")))))
+             | List t ->
+                 let type_to_union_element =
+                   (function
+                    | Int -> "_int"
+                    | Double -> "_double"
+                    | Char -> "_char"
+                    | Channel (Int, _) -> "_int_channel"
+                    | _ -> "")
+                 in
+                   (* Todo *)
+                   "_get_front(" ^ (exp ^ (")." ^ (type_to_union_element t)))
+             | _ -> raise (Failure "Invalid type"))
+        | ListLength -> "_get_length(" ^ (exp ^ ")")
+        | ListTail -> "_get_tail(" ^ (exp ^ ")") in
+    let translate_bool b = match b with | true -> "1" | false -> "0" in
+    let rec expr_list_to_string (expr_list : typed_expr list) =
+      let translated_exprs =
+        List.rev
+          (List.fold_left (fun acc elm -> (translate_expr elm) :: acc) []
+             expr_list)
+      in String.concat ", " translated_exprs in
+    (* Translate flow type functions, including built-ins, to c function calls *)
+    let translate_function (id : string) (expr_list : typed_expr list) :
+      string =
+      match id with
+      | "print_string" ->
+          "printf(\"%s\", " ^
+            ((expr_list_to_string expr_list) ^ (");\n" ^ "fflush(stdout)"))
+      | "print_int" ->
+          "printf(\"%d\", " ^
+            ((expr_list_to_string expr_list) ^ (");\n" ^ "fflush(stdout)"))
+      | "print_char" ->
+          "printf(\"%c\", " ^
+            ((expr_list_to_string expr_list) ^ (");\n" ^ "fflush(stdout)"))
+      | "print_double" ->
+          "printf(\"%G\", " ^
+            ((expr_list_to_string expr_list) ^ (");\n" ^ "fflush(stdout)"))
+      | "println" -> "printf(\"\\n\");\n" ^ "fflush(stdout)"
+      | "rand" -> " (double)rand() / (double)RAND_MAX "
+      | _ -> id ^ ("(" ^ ((expr_list_to_string expr_list) ^ ")")) in
+    let translate_process_call (id : string) (expr_list : typed_expr list) =
+      let pthread_decl =
+        "pthread_t* _t = _make_pthread_t(\"" ^ (id ^ "\");\n") in
+      let malloced_args =
+        "struct _" ^
+          (id ^
+             ("_args* _margs = malloc(sizeof(struct _" ^ (id ^ "_args));\n"))) in
+      let args_struct =
+        "struct _" ^
+          (id ^
+             ("_args _args = {\n" ^
+                ((expr_list_to_string expr_list) ^ "\n};\n"))) in
+      let copy_struct =
+        "memcpy((void*) _margs, (void*) &_args, sizeof(typeof(_args)));\n" in
+      let pthread_creation =
+        "pthread_create(_t, NULL, " ^ (id ^ ", (void *) _margs);\n")
+      in
+        "{\n" ^
+          (pthread_decl ^
+             (malloced_args ^
+                (args_struct ^ (copy_struct ^ (pthread_creation ^ "\n}")))))
     in
-
-    let rec translate_expr (expr: typed_expr) =
-
-        let translate_bin_op (typed_exp1 : typed_expr) (bin_op : bin_op) (typed_exp2 : typed_expr) =
-          let t1 = snd typed_exp1 and t2 = snd typed_exp2
-          and exp1 = translate_expr typed_exp1 and exp2 = translate_expr typed_exp2 in
-          match bin_op with
-            Plus -> exp1 ^ "+" ^ exp2
-          | Minus -> exp1 ^ "-" ^ exp2
-          | Times -> exp1 ^ "*" ^ exp2
-          | Divide -> exp1 ^ "/" ^ exp2
-          | Modulo -> exp1 ^ "%" ^ exp2
-          | Eq -> exp1 ^ "==" ^ exp2 (*TODO pattern match against string type so string comparison can be done*)
-          | Neq -> exp1 ^ "!=" ^ exp2
-          | Lt -> exp1 ^ "<" ^ exp2
-          | Gt -> exp1 ^ ">" ^ exp2
-          | Leq -> exp1 ^ "<=" ^ exp2
-          | Geq -> exp1 ^ ">=" ^ exp2
-          | And -> (check_wait_for_more exp1 t1) ^ "&&" ^ (check_wait_for_more exp2 t2)
-          | Or -> (check_wait_for_more exp1 t1) ^ "||" ^ (check_wait_for_more exp2 t2)
-          | Send ->
-                  "CALL_ENQUEUE_FUNC(" ^
-                  exp1 ^ ", " ^ exp2 ^ "," ^
-                  translate_type t1 ^ ", " ^ print_dot ^ ")"
-          | Assign ->
-                  (match t1, fst typed_exp2 with
-                      List(t), TListInitializer(_) ->
-                          let temp_list_name = "_temp_" ^ exp1 in
-                          let temp_vdecl = { s_declaration_type = List(t);
-                                             s_declaration_id = temp_list_name;
-                                             s_declaration_initializer =  typed_exp2 } in
-                          translate_vdecl temp_vdecl false ^ ";\n" ^ exp1 ^ "=" ^ temp_list_name ^ ";\n"
-                    | _ -> exp1 ^ "=" ^ exp2)
-                  (* let assingment = exp1 ^ "=" ^ exp2 *)
-                  (* and dec_refs = "_decrease_refs(" ^ exp1 ^ ")" *)
-                  (* and inc_refs = "_increase_refs(" ^ exp2 ^ ")" in *)
-                  (* (match t1 with *)
-                  (*     List(_) -> String.concat "\n;"  *)
-
-
-          | Concat -> "_add_front( (union _payload) " ^ exp1 ^ ", " ^ exp2 ^ ")"
-        in
-
-        let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) =
-          let exp = translate_expr typed_expr
-          in
-          match unary_op with
-            Not -> "!" ^ exp
-          | Negate -> "-" ^ exp
-          | Retrieve ->
-                  (match snd typed_expr with (* TODO: We may be able to remove this pattern match *)
-                      Channel(t, dir) ->
-                          "CALL_DEQUEUE_FUNC(" ^ exp ^ "," ^ translate_type t ^ ", " ^ print_dot ^")"
-                    | List(t) ->
-                            let type_to_union_element = (function
-                                Int -> "_int"
-                              | Double -> "_double"
-                              | Char -> "_char"
-                              | Channel(Int, _) -> "_int_channel"
-                              | _ -> "" (* Todo *) ) in
-                            "_get_front(" ^ exp ^ ")." ^ type_to_union_element t
-                    | _ -> raise(Failure("Invalid type")))
-          | ListLength -> "_get_length(" ^ exp ^ ")"
-          | ListTail -> "_get_tail(" ^ exp ^ ")"
-        in
-        let translate_bool b =
-          match b with
-            true -> "1"
-          | false -> "0"
-        in
-        let rec expr_list_to_string (expr_list : typed_expr list) =
-            let translated_exprs =
-                List.rev (  List.fold_left
-                            (fun acc elm -> (translate_expr elm)::acc )
-                            [] expr_list  ) in
-            String.concat ", " translated_exprs in
-
-        (* Translate flow type functions, including built-ins, to c function calls *)
-        let translate_function (id : string) (expr_list : typed_expr list) : string =
-            match id with
-            | "print_string" -> "printf(\"%s\", " ^ expr_list_to_string expr_list ^ ");\n"
-                ^ "fflush(stdout)"
-            | "print_int" -> "printf(\"%d\", " ^ expr_list_to_string expr_list ^ ");\n"
-                ^ "fflush(stdout)"
-            | "print_char" -> "printf(\"%c\", " ^ expr_list_to_string expr_list ^ ");\n"
-                ^ "fflush(stdout)"
-            | "print_double" -> "printf(\"%G\", " ^ expr_list_to_string expr_list ^ ");\n"
-                ^ "fflush(stdout)"
-            | "println" ->  "printf(\"\\n\");\n" ^ "fflush(stdout)"
-            | "rand" -> " (double)rand() / (double)RAND_MAX "
-            | _ -> id ^ "(" ^ expr_list_to_string expr_list ^ ")"
-        in
-        let translate_process_call (id : string) (expr_list : typed_expr list) =
-          let pthread_decl = "pthread_t* _t = _make_pthread_t(\"" ^ id ^ "\");\n" in
-          let malloced_args = "struct _" ^ id ^ "_args* _margs = malloc(sizeof(struct _" ^ id ^ "_args));\n" in
-          let args_struct = "struct _" ^ id ^ "_args _args = {\n" ^ expr_list_to_string expr_list ^ "\n};\n" in
-          let copy_struct = "memcpy((void*) _margs, (void*) &_args, sizeof(typeof(_args)));\n" in
-          let pthread_creation = "pthread_create(_t, NULL, " ^ id ^ ", (void *) _margs);\n" in
-          "{\n" ^ pthread_decl ^ malloced_args ^ args_struct ^ copy_struct ^ pthread_creation ^ "\n}"
-        in
-        match expr with
-          TIntLiteral(i), _ -> string_of_int i
-        | TStringLiteral(s), _ -> "\"" ^ s ^ "\""
-        | TBoolLiteral(b), _ -> translate_bool b
-        | TCharLiteral(c), _ -> "\'" ^ String.make 1 c ^ "\'"
-        | TDoubleLiteral(d), _ -> string_of_float d
-        | TId(i), _ -> i
-        | TBinOp(expr1, bin_op, expr2), _ ->
-             translate_bin_op expr1 bin_op expr2
-        | TUnaryOp(unary_op, expr), _ ->
-            translate_unary_op unary_op expr
-        | TFunctionCall(id, expr_list), Proc -> translate_process_call id expr_list
-        | TFunctionCall(id, expr_list), _ -> translate_function id expr_list
-        | TListInitializer(expr_list), _ -> "{" ^ expr_list_to_string expr_list ^ "}"
-        | TNoexpr, _ -> ""
-
-    (* Translate flow variable declaration to c variable declaration *)
-    and translate_vdecl (vdecl : s_variable_declaration) (is_arg: bool) =
-        let translated_type = translate_type vdecl.s_declaration_type in
-        translated_type ^ " " ^
-        vdecl.s_declaration_id ^ " " ^
-        (match vdecl.s_declaration_type with
-            (* If the declaration is a channel, we need to perform a malloc
+      match expr with
+      | (TIntLiteral i, _) -> string_of_int i
+      | (TStringLiteral s, _) -> "\"" ^ (s ^ "\"")
+      | (TBoolLiteral b, _) -> translate_bool b
+      | (TCharLiteral c, _) -> "\'" ^ ((String.make 1 c) ^ "\'")
+      | (TDoubleLiteral d, _) -> string_of_float d
+      | (TId i, _) -> i
+      | (TBinOp (expr1, bin_op, expr2), _) ->
+          translate_bin_op expr1 bin_op expr2
+      | (TUnaryOp (unary_op, expr), _) -> translate_unary_op unary_op expr
+      | (TFunctionCall (id, expr_list), Proc) ->
+          translate_process_call id expr_list
+      | (TFunctionCall (id, expr_list), _) -> translate_function id expr_list
+      | (TListInitializer expr_list, _) ->
+          "{" ^ ((expr_list_to_string expr_list) ^ "}")
+      | (TNoexpr, _) -> ""
+  and (* Translate flow variable declaration to c variable declaration *)
+    translate_vdecl (vdecl : s_variable_declaration) (is_arg : bool) =
+    let translated_type = translate_type vdecl.s_declaration_type
+    in
+      translated_type ^
+        (" " ^
+           (vdecl.s_declaration_id ^
+              (" " ^
+                 (match vdecl.s_declaration_type with
+                  | (* If the declaration is a channel, we need to perform a malloc
              * and also initialize the struct associated with the channel *)
-            Channel(t, Nodir) -> if is_arg then "" else
-                (match fst vdecl.s_declaration_initializer with
-                    TNoexpr ->
-                        (* Perform the malloc with the proper struct *)
-                        (* "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^ *)
-                        "MALLOC_CHANNEL(" ^ translate_type t ^ ");\n" ^
-
-                        (* This will initializes the locks, etc. *)
-                        "_init_channel( (struct _channel *) " ^ vdecl.s_declaration_id ^ ")"
-                  | TUnaryOp(Retrieve, _) -> " = " ^ translate_expr vdecl.s_declaration_initializer
-                  | TFunctionCall(_, _ ) -> " = " ^ translate_expr vdecl.s_declaration_initializer
-                  | _ -> "")
-          | List(t) ->
-                  if is_arg then ""
-                  else let add_fronts =
-                      (match fst vdecl.s_declaration_initializer with
-                            TListInitializer(expr_list) ->
-                                List.map (fun expr ->
-                                    vdecl.s_declaration_id ^ " = _add_front( (union _payload)" ^
-                                    translate_expr expr ^ "," ^ vdecl.s_declaration_id ^ ")" )
-                                (List.rev expr_list)
-                          | TUnaryOp(ListTail, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
-                          | TId(id_name) -> [vdecl.s_declaration_id ^ "=" ^ id_name; "_increase_refs(" ^ id_name ^ ")"]
-                          | TFunctionCall(_, _) -> [vdecl.s_declaration_id ^ "=" ^ translate_expr vdecl.s_declaration_initializer]
-                          | TNoexpr -> [""]
-                          | _ -> raise(Failure("Invalid list initializer " ))) in
-                  "= NULL; " ^ String.concat ";\n" add_fronts
-
-          | _ ->
-                (match vdecl.s_declaration_initializer with
-                    TNoexpr, _ -> ""
-                  | _, _ -> "=" ^ (translate_expr vdecl.s_declaration_initializer))) in
-
-    (* Check if channel is in a conditional *)
-    let eval_conditional_expr (typed_expr :typed_expr) =
-      let t = snd typed_expr in
-      match t with
-        Channel(_,_) -> "_wait_for_more((struct _channel* ) " ^ translate_expr typed_expr ^ ")"
-      | _ ->  translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
+                      Channel (t, Nodir) ->
+                      if is_arg
+                      then ""
+                      else
+                        (match fst vdecl.s_declaration_initializer with
+                         | TNoexpr ->
+                             (* Perform the malloc with the proper struct *)
+                             (* "malloc(sizeof(" ^ "struct " ^ channel_type ^ "));\n" ^ *)
+                             "MALLOC_CHANNEL(" ^
+                               ((translate_type t) ^
+                                  (");\n" ^
+                                     (* This will initializes the locks, etc. *)
+                                     ("_init_channel( (struct _channel *) " ^
+                                        (vdecl.s_declaration_id ^ ")"))))
+                         | TUnaryOp (Retrieve, _) ->
+                             " = " ^
+                               (translate_expr
+                                  vdecl.s_declaration_initializer)
+                         | TFunctionCall (_, _) ->
+                             " = " ^
+                               (translate_expr
+                                  vdecl.s_declaration_initializer)
+                         | _ -> "")
+                  | List t ->
+                      if is_arg
+                      then ""
+                      else
+                        (let add_fronts =
+                           match fst vdecl.s_declaration_initializer with
+                           | TListInitializer expr_list ->
+                               List.map
+                                 (fun expr ->
+                                    vdecl.s_declaration_id ^
+                                      (" = _add_front( (union _payload)" ^
+                                         ((translate_expr expr) ^
+                                            ("," ^
+                                               (vdecl.s_declaration_id ^ ")")))))
+                                 (List.rev expr_list)
+                           | TUnaryOp (ListTail, _) ->
+                               [ vdecl.s_declaration_id ^
+                                   ("=" ^
+                                      (translate_expr
+                                         vdecl.s_declaration_initializer)) ]
+                           | TId id_name ->
+                               [ vdecl.s_declaration_id ^ ("=" ^ id_name);
+                                 "_increase_refs(" ^ (id_name ^ ")") ]
+                           | TFunctionCall (_, _) ->
+                               [ vdecl.s_declaration_id ^
+                                   ("=" ^
+                                      (translate_expr
+                                         vdecl.s_declaration_initializer)) ]
+                           | TNoexpr -> [ "" ]
+                           | _ -> raise (Failure "Invalid list initializer ")
+                         in "= NULL; " ^ (String.concat ";\n" add_fronts))
+                  | _ ->
+                      (match vdecl.s_declaration_initializer with
+                       | (TNoexpr, _) -> ""
+                       | (_, _) ->
+                           "=" ^
+                             (translate_expr vdecl.s_declaration_initializer)))))) in
+  (* Check if channel is in a conditional *)
+  let eval_conditional_expr (typed_expr : typed_expr) =
+    let t = snd typed_expr
     in
-
-    (* Check the type of the poison token *)
-    let eval_poison_type (typed_expr : typed_expr) =
-      let t = snd typed_expr in
       match t with
-        Channel(_,_) -> "_poison((struct _channel* )" ^ translate_expr typed_expr ^ ");"
-      | _ -> translate_expr typed_expr (* TODO Needs to be populated with other channel types *)
+      | Channel (_, _) ->
+          "_wait_for_more((struct _channel* ) " ^
+            ((translate_expr typed_expr) ^ ")")
+      | _ -> translate_expr typed_expr in
+  (* TODO Needs to be populated with other channel types *)
+  (* Check the type of the poison token *)
+  let eval_poison_type (typed_expr : typed_expr) =
+    let t = snd typed_expr
     in
-
-    let rec translate_stmt (stmt: s_stmt) =
-        match stmt with
-            SExpr(e) ->
-                let translated_expr = translate_expr e ^ ";\n" in
-                (match fst e with
-                    (* This absurd match finds all list assignments *)
-                    TBinOp(e1, op, e2) when op = Assign
-                                       && (match snd e1 with
-                                              List(_) -> true
-                                            | _       -> false) ->
-                        let list_name = translate_expr e1 in
-                        let store_temp = "temp = " ^ list_name ^ ";\n" in
-                        let dec_stmt = "_decrease_refs(temp);\n"
-                        and inc_stmt = "_increase_refs(" ^ list_name ^ ");\n" in
-
-                        (* First decrease the references to the list, in
+      match t with
+      | Channel (_, _) ->
+          "_poison((struct _channel* )" ^
+            ((translate_expr typed_expr) ^ ");")
+      | _ -> translate_expr typed_expr in
+  (* TODO Needs to be populated with other channel types *)
+  let rec translate_stmt (stmt : s_stmt) =
+    match stmt with
+    | SExpr e ->
+        let translated_expr = (translate_expr e) ^ ";\n"
+        in
+          (match fst e with
+           | (* This absurd match finds all list assignments *)
+               TBinOp (e1, op, e2) when
+               (op = Assign) &&
+                 (match snd e1 with | List _ -> true | _ -> false)
+               ->
+               let list_name = translate_expr e1 in
+               let store_temp = "temp = " ^ (list_name ^ ";\n") in
+               let dec_stmt = "_decrease_refs(temp);\n"
+               and inc_stmt = "_increase_refs(" ^ (list_name ^ ");\n")
+               in
+                 (* First decrease the references to the list, in
                          * prep for reassignment. Then, do the reassignment.
                          * Then, increase the references to the list, which
                          * now points to a new cell after reassignment *)
-                        store_temp ^ translated_expr ^ inc_stmt ^ dec_stmt;
-                  | _ -> translated_expr)
-          | SBlock(stmt_list) ->
-                  "{\n" ^
-                  String.concat "" (List.map translate_stmt stmt_list) ^
-                  "}\n"
-          | SReturn(e) -> "return " ^ translate_expr e ^ ";"
-          | SDeclaration(vdecl) -> translate_vdecl vdecl false ^ ";\n"
-          | SIf(e1, s1, s2) ->
-                  "if(" ^ eval_conditional_expr e1 ^ ")\n" ^
-                  translate_stmt s1 ^ "\nelse\n" ^
-                  translate_stmt s2
-          | SFor(e1, e2, e3, s) ->
-                  "for(" ^ String.concat "; " (List.map translate_expr [e1; e2; e3]) ^
-                  ")\n" ^ translate_stmt s
-          | SWhile(e, s) ->
-                  "while(" ^ eval_conditional_expr e ^ ")" ^
-                  translate_stmt s
-          | SContinue -> "continue;"
-          | SBreak -> "break;"
-          | SPoison(e) -> eval_poison_type e
-          | SExitProc -> "_exit_thread();" in
-
-    (* unpacks the arguments to a process from void *_args *)
-    let unpack_process_args (process: s_function_declaration) =
-        "\n" ^
-        (String.concat ";\n"
-        (List.map (fun vdecl ->
-            (translate_vdecl vdecl true) ^ " = " ^
-            "((struct _" ^ process.s_function_name ^ "_args*) _args)->" ^
-            vdecl.s_declaration_id)
-        process.s_arguments)) ^
-        ";\n" in
-
-    (* Translate flow function declaration to c function declaration *)
-    let translate_fdecl (fdecl : s_function_declaration) : string =
-        let opening_stmts, closing_stmts =
-            if fdecl.s_function_name = "main"
-            then "_initialize_runtime(" ^ print_dot ^ ");\n", "_wait_for_finish(" ^ print_dot ^ ");\n"
-            else "",""
-        and temp_list_decl = "struct _cell* temp;\n" in
-        let arg_decl_string_list = (List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments) in
-        (match fdecl.s_return_type with
-            Proc -> ("struct _" ^ fdecl.s_function_name ^ "_args{\n\t" ^
-                     String.concat ";\n\t" arg_decl_string_list ^ ";\n};\n")
-          | _ -> "") ^
-        (translate_type fdecl.s_return_type) ^ " " ^
-        fdecl.s_function_name ^
-        (match fdecl.s_return_type with
-            Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
-          | _  -> "(" ^ (String.concat ", "  arg_decl_string_list) ^ ")\n{") ^ opening_stmts ^ temp_list_decl ^
-        String.concat "" (List.map translate_stmt fdecl.s_body) ^ closing_stmts ^ "\n}"
+                 store_temp ^ (translated_expr ^ (inc_stmt ^ dec_stmt))
+           | _ -> translated_expr)
+    | SBlock stmt_list ->
+        "{\n" ^
+          ((String.concat "" (List.map translate_stmt stmt_list)) ^ "}\n")
+    | SReturn e -> "return " ^ ((translate_expr e) ^ ";")
+    | SDeclaration vdecl -> (translate_vdecl vdecl false) ^ ";\n"
+    | SIf (e1, s1, s2) ->
+        "if(" ^
+          ((eval_conditional_expr e1) ^
+             (")\n" ^
+                ((translate_stmt s1) ^ ("\nelse\n" ^ (translate_stmt s2)))))
+    | SFor (e1, e2, e3, s) ->
+        "for(" ^
+          ((String.concat "; " (List.map translate_expr [ e1; e2; e3 ])) ^
+             (")\n" ^ (translate_stmt s)))
+    | SWhile (e, s) ->
+        "while(" ^ ((eval_conditional_expr e) ^ (")" ^ (translate_stmt s)))
+    | SContinue -> "continue;"
+    | SBreak -> "break;"
+    | SPoison e -> eval_poison_type e
+    | SExitProc -> "_exit_thread();" in
+  (* unpacks the arguments to a process from void *_args *)
+  let unpack_process_args (process : s_function_declaration) =
+    "\n" ^
+      ((String.concat ";\n"
+          (List.map
+             (fun vdecl ->
+                (translate_vdecl vdecl true) ^
+                  (" = " ^
+                     ("((struct _" ^
+                        (process.s_function_name ^
+                           ("_args*) _args)->" ^ vdecl.s_declaration_id)))))
+             process.s_arguments))
+         ^ ";\n") in
+  (* Translate flow function declaration to c function declaration *)
+  let translate_fdecl (fdecl : s_function_declaration) : string =
+    let (opening_stmts, closing_stmts) =
+      if fdecl.s_function_name = "main"
+      then
+        (("_initialize_runtime(" ^ (print_dot ^ ");\n")),
+         ("_wait_for_finish(" ^ (print_dot ^ ");\n")))
+      else ("", "")
+    and temp_list_decl = "struct _cell* temp;\n" in
+    let arg_decl_string_list =
+      List.map (fun arg -> translate_vdecl arg true) fdecl.s_arguments
     in
+      (match fdecl.s_return_type with
+       | Proc ->
+           "struct _" ^
+             (fdecl.s_function_name ^
+                ("_args{\n\t" ^
+                   ((String.concat ";\n\t" arg_decl_string_list) ^ ";\n};\n")))
+       | _ -> "") ^
+        ((translate_type fdecl.s_return_type) ^
+           (" " ^
+              (fdecl.s_function_name ^
+                 ((match fdecl.s_return_type with
+                   | Proc -> "(void *_args)\n{" ^ (unpack_process_args fdecl)
+                   | _ ->
+                       "(" ^
+                         ((String.concat ", " arg_decl_string_list) ^ ")\n{"))
+                    ^
+                    (opening_stmts ^
+                       (temp_list_decl ^
+                          ((String.concat ""
+                              (List.map translate_stmt fdecl.s_body))
+                             ^ (closing_stmts ^ "\n}"))))))))
+  in
     (* Translate the flow program to a c program *)
     boilerplate_header ^
-    String.concat "\n"
-    (List.map (fun decl ->
-        match decl with
-          SVarDecl(vdecl) -> translate_vdecl vdecl false ^ ";\n"
-        | SFuncDecl(fdecl) -> translate_fdecl fdecl)
-    (List.rev program)) ^ "\n"
+      ((String.concat "\n"
+          (List.map
+             (fun decl ->
+                match decl with
+                | SVarDecl vdecl -> (translate_vdecl vdecl false) ^ ";\n"
+                | SFuncDecl fdecl -> translate_fdecl fdecl)
+             (List.rev program)))
+         ^ "\n")
+  
+
