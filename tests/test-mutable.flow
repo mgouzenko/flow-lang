@@ -1,0 +1,9 @@
+// Ensure that non-global variables with the same name as a global are mutable.
+
+int a = 3;
+
+int main() {
+  int a = 4;
+  a = 5;
+  print_int(a);
+}
