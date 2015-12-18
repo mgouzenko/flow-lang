@@ -6,17 +6,17 @@ proc numGen(out int ochan){
   88 -> ochan;
 }
 
-proc printer(in int chan) {
-  print_int(@chan);
+proc get_int(in int chan) {
+  int a = @chan;
 }
 
-proc printer2(in int chan) {
-  print_int(@chan);
+proc get_int2(in int chan) {
+  int b = @chan;
 }
 
 int main() {
   channel<int> chan;
   numGen(chan);
-  printer(chan);
-  printer2(chan); // FAIL
+  get_int(chan);
+  get_int2(chan); // FAIL
 }

@@ -1,0 +1,8 @@
+// Global variables should be immutable
+
+int a = 3;
+
+int main() {
+  a = 4;
+  print_int(a);
+}
