@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 
+/****************************** Channel Structs ******************************/
 #define BASIC_CHANNEL_MEMBERS                                                  \
   pthread_mutex_t lock;                                                        \
   int size;                                                                    \
@@ -63,11 +64,16 @@ int _init_channel(struct _channel *channel) {
   return 0;
 }
 
+/************************* Global Thread Metadata **************************/
+
+/* Node for linked list of channel names. Keeps track of channels that
+ * threads can write to. */
 struct _channel_list_node {
   struct _channel *chan;
   struct _channel_list_node *next;
 };
 
+/* Defines a node of the global thread metadata list. */
 struct _pthread_node {
   pthread_t thread;
   struct _pthread_node *next;
@@ -75,12 +81,15 @@ struct _pthread_node {
   struct _channel_list_node *writing_channels;
 };
 
+/* The global thread metadata list */
 struct _pthread_node *_head = NULL;
 struct _pthread_node *_tail = NULL;
 
+/* Lock for the thread metadata list */
 pthread_mutex_t _thread_list_lock;
 pthread_mutex_t _ref_counting_lock;
 
+/* Finds a thread in the global threadlist given its id */
 struct _pthread_node *_get_thread(pthread_t thread_id) {
   pthread_mutex_lock(&_thread_list_lock);
   struct _pthread_node *curr = _head;
@@ -94,6 +103,8 @@ struct _pthread_node *_get_thread(pthread_t thread_id) {
   return curr;
 }
 
+/* Gets the name of the process running on a thread,
+ * given the thread id */
 char *_get_thread_name(pthread_t thread_id) {
   if (_head == NULL)
     return "";
@@ -117,6 +128,10 @@ void _print_dot_node(struct _channel *chan) {
           _get_thread_name(chan->reading_thread));
 }
 
+/************************* Enqueue/Dequeue Macros *****************************/
+
+/* Given a token type, this macro generates an enqueue function
+ * for the associated channel. */
 #define MAKE_ENQUEUE_FUNC(type)                                                \
   type _enqueue_##type(type element, struct _##type##_channel *channel,        \
                        bool dot_print) {                                       \
@@ -157,12 +172,16 @@ void _print_dot_node(struct _channel *chan) {
     return element;                                                            \
   }
 
+/* Create enqueue functions for ints, chars, and doubles */
 MAKE_ENQUEUE_FUNC(int)
 MAKE_ENQUEUE_FUNC(char)
 MAKE_ENQUEUE_FUNC(double)
 
+/* This macro calls the appropriate dequeue function */
 #define CALL_ENQUEUE_FUNC(e, c, t, dot) _enqueue_##t(e, c, dot)
 
+/* Given a token type, this macro generates a dequeue function
+ * for the associated channel. */
 #define MAKE_DEQUEUE_FUNC(type)                                                \
   type _dequeue_##type(struct _##type##_channel *channel, bool dot_print) {    \
     pthread_mutex_lock(&channel->lock);                                        \
@@ -192,12 +211,15 @@ MAKE_ENQUEUE_FUNC(double)
     return result;                                                             \
   }
 
+/* Make dequeue functions for int, char, and double channels */
 MAKE_DEQUEUE_FUNC(int)
 MAKE_DEQUEUE_FUNC(char)
 MAKE_DEQUEUE_FUNC(double)
 
+/* This macro calls the appropriate dequeue function */
 #define CALL_DEQUEUE_FUNC(c, t, dot) _dequeue_##t(c, dot)
 
+/* Poison the channel, indicating that it won't be written to in the future */
 void _poison(struct _channel *channel) {
   pthread_mutex_lock(&channel->lock);
   channel->poisoned = true;
@@ -205,6 +227,12 @@ void _poison(struct _channel *channel) {
   pthread_mutex_unlock(&channel->lock);
 }
 
+/* This function is called whenever a channel is used in a boolean context.
+ * Three cases:
+ *   1) Channel is poisoned and empty     -> return false
+ *   2) Channel is nonempty               -> return true
+ *   3) Channel is empty but not poisoned -> block
+ */
 bool _wait_for_more(struct _channel *channel) {
   pthread_mutex_lock(&channel->lock);
   while (channel->size == 0) {
@@ -219,6 +247,9 @@ bool _wait_for_more(struct _channel *channel) {
   return true;
 }
 
+/************************* Miscellaneous **************************/
+
+/* Initializes global locks */
 void _initialize_runtime(bool print_dot) {
   pthread_mutex_init(&_thread_list_lock, NULL);
   pthread_mutex_init(&_ref_counting_lock, NULL);
@@ -227,6 +258,8 @@ void _initialize_runtime(bool print_dot) {
     fprintf(stderr, "digraph G{\n");
 }
 
+/* Create a pthread node and enqueue it on the list. Return the address of
+ * its id for pthread_create */
 pthread_t *_make_pthread_t(char *proc_name) {
   pthread_mutex_lock(&_thread_list_lock);
   struct _pthread_node *new_pthread =
@@ -244,6 +277,9 @@ pthread_t *_make_pthread_t(char *proc_name) {
   return &(new_pthread->thread);
 }
 
+/* Invoked when return is reached from a process.
+ * This function will cause the returning thread to poison all of
+ * its outgoing channels if it hasn't done so yet. */
 void _exit_thread() {
   struct _pthread_node *this_thread = _get_thread(pthread_self());
   struct _channel_list_node *curr_chan = this_thread->writing_channels;
@@ -255,6 +291,7 @@ void _exit_thread() {
   pthread_exit(NULL);
 }
 
+/* Called from within main to wait for processes to finish */
 void _wait_for_finish(bool print_dot) {
   struct _pthread_node *curr = _head;
   while (curr) {
@@ -265,6 +302,7 @@ void _wait_for_finish(bool print_dot) {
     fprintf(stderr, "}");
 }
 
+/******************************** Lists *********************************/
 union _payload {
   int _int;
   double _double;
@@ -304,21 +342,22 @@ struct _cell *_get_tail(struct _cell *head) {
 }
 
 void __decrease_refs(struct _cell *head, int lock) {
-  // if(lock)
-  // pthread_mutex_lock(&_ref_counting_lock);
-  // if(!head){
-  // if(lock)
-  // pthread_mutex_unlock(&_ref_counting_lock);
-  // return;
-  //}
-  // else if(head->references > 1)
-  // head->references--;
-  // else{
-  //__decrease_refs(head->next, 0);
-  // free(head);
-  //}
-  // if(lock)
-  // pthread_mutex_unlock(&_ref_counting_lock);
+  if(lock)
+    pthread_mutex_lock(&_ref_counting_lock);
+
+  if(!head){
+    if(lock)
+      pthread_mutex_unlock(&_ref_counting_lock);
+    return;
+  }
+  else if(head->references > 1)
+    head->references--;
+  else{
+    __decrease_refs(head->next, 0);
+    free(head);
+  }
+  if(lock)
+    pthread_mutex_unlock(&_ref_counting_lock);
 }
 
 void _decrease_refs(struct _cell *head) {
