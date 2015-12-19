@@ -3,7 +3,6 @@
 %token SEMI LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE MODULO ASSIGN CONCAT
 %token WRITE_CHANNEL RETRIEVE PROC CHANNEL IN OUT
-%token DOT
 %token BREAK CONTINUE VOID
 %token POISON
 %token OR AND NOT
@@ -29,8 +28,7 @@
 %right CONCAT
 %left PLUS MINUS
 %left TIMES DIVIDE MODULO
-%left RETRIEVE
-%left DOT
+%nonassoc RETRIEVE
 %nonassoc UNARY_OP  /* dummy variable for highest precedence */
 
 %start program

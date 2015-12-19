@@ -1,0 +1,7 @@
+// Should allow chained tail retrieval
+
+int main() {
+  list <int> l = [1,2,3];
+  l = ^^l;
+  print_int(@l);
+}

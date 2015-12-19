@@ -1,0 +1,8 @@
+// Should allow chained negation on bools
+
+int main() {
+  bool t = !!true;
+  if (t){
+    print_string("OK");
+  }
+}
