@@ -1,0 +1,7 @@
+// Should be able to declare a function with an empty initialization
+
+void test_func() {}
+
+int main() {
+  print_int(10);
+}

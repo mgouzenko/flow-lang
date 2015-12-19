@@ -1,4 +1,4 @@
-// Lists should pass by value
+// Lists should be immutable when passed into functions
 
 int sumList(list <int> test){
   int sum = 0;

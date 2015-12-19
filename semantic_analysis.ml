@@ -75,7 +75,17 @@ let check_progam (prog : program) : s_program =
     | Channel (t, In) -> "in " ^ (string_of_type t)
     | Channel (t, Out) -> "out " ^ (string_of_type t)
     | List t -> "list<" ^ ((string_of_type t) ^ ">") in
-  let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) :
+  (* Helper function to check if a variable is a previously declared global *)
+  let rec is_declared_global_var (name: string) (symbol_table: symtab) : bool =
+    if (List.exists (fun var_decl -> var_decl.declaration_id = name) symbol_table.variables)
+    then (match symbol_table.parent with 
+          | Some parent -> false
+          | _ -> true)
+    else (match symbol_table.parent with 
+          | Some parent -> is_declared_global_var name parent
+          | _ -> false)
+  in
+  let check_binop (e1 : typed_expr) (e2 : typed_expr) (op : bin_op) (env: environment) :
     typed_expr =
     let (expr_details1, t1) = e1
     and (expr_details2, t2) = e2
@@ -106,7 +116,9 @@ let check_progam (prog : program) : s_program =
           (match expr_details1 with
            | TId name ->
                if t1 = t2
-               then ((TBinOp (e1, op, e2)), t1)
+               then (if (is_declared_global_var name env.symbol_table) 
+                     then (raise (Failure "Global variables are immutable")) 
+                    else((TBinOp (e1, op, e2)), t1))
                else
                  raise
                    (Invalid_argument
@@ -238,7 +250,7 @@ let check_progam (prog : program) : s_program =
     | BinOp (e1, op, e2) ->
         let checked_e1 = check_expr env e1
         and checked_e2 = check_expr env e2
-        in check_binop checked_e1 checked_e2 op
+        in check_binop checked_e1 checked_e2 op env
     | ListInitializer expr_list ->
         if (List.length expr_list) == 0
         then (TNoexpr, Void)
