@@ -78,10 +78,10 @@ let check_progam (prog : program) : s_program =
   (* Helper function to check if a variable is a previously declared global *)
   let rec is_declared_global_var (name: string) (symbol_table: symtab) : bool =
     if (List.exists (fun var_decl -> var_decl.declaration_id = name) symbol_table.variables)
-    then (match symbol_table.parent with 
+    then (match symbol_table.parent with
           | Some parent -> false
           | _ -> true)
-    else (match symbol_table.parent with 
+    else (match symbol_table.parent with
           | Some parent -> is_declared_global_var name parent
           | _ -> false)
   in
@@ -116,8 +116,8 @@ let check_progam (prog : program) : s_program =
           (match expr_details1 with
            | TId name ->
                if t1 = t2
-               then (if (is_declared_global_var name env.symbol_table) 
-                     then (raise (Failure "Global variables are immutable")) 
+               then (if (is_declared_global_var name env.symbol_table)
+                     then (raise (Failure "Global variables are immutable"))
                     else((TBinOp (e1, op, e2)), t1))
                else
                  raise
@@ -284,7 +284,6 @@ let check_progam (prog : program) : s_program =
      * can be Noexpr (which is void) *)
       if (t = decl.declaration_type) || (t = Void)
       then
-        (* let _ = print_string(string_of_type t); print_string(string_of_type decl.declaration_type) in *)
         (try
            let _ =
              (* Try to find the a local variable of the same name. If found, it's an error. *)
@@ -325,7 +324,7 @@ let check_progam (prog : program) : s_program =
   let check_arg_declaration (env : environment) (decl : variable_declaration)
                             =
     match decl.declaration_initializer with
-    | (* Todo: make sure channels have correct directions *) Noexpr ->
+    | Noexpr ->
         check_variable_declaration env decl
     | _ ->
         raise
