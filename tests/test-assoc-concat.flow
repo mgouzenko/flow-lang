@@ -1,1 +1,5 @@
-test-assoc.flow
+int main() {
+  list <int> l = [1,2,3];
+  l = 3+3::l;
+  print_int(@l);
+}

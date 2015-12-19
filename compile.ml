@@ -86,7 +86,7 @@ let compile (program : s_program) (dot : bool) : string =
                      (";\n" ^ (exp1 ^ ("=" ^ (temp_list_name ^ ";\n"))))
              | _ -> exp1 ^ ("=" ^ exp2))
         | Concat ->
-             "_add_front( (union _payload) " ^ (exp1 ^ (", " ^ (exp2 ^ ")"))) in
+             "_add_front( (union _payload) " ^ ( "(" ^ exp1 ^ ")" ^ (", " ^ (exp2 ^ ")"))) in
 
     (* Translate a flow unary operation *)
     let translate_unary_op (unary_op : unary_op) (typed_expr : typed_expr) : string =
