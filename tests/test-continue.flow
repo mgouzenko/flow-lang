@@ -1,0 +1,14 @@
+// Continue statement should work properly
+
+int main() {
+  int sum = 0;
+  int i = 0;
+  while(i < 3) {
+    i = i + 1;
+    if (i == 2) {
+      continue;
+    }
+    sum = sum + i;
+  }
+  print_int(sum);
+}

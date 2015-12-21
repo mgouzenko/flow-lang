@@ -1,0 +1,12 @@
+// Break statement should work properly
+
+int main() {
+  int x = 3;
+  while (true) {
+    x = x + 1;
+    if (x == 5) {
+      break;
+    }
+  }
+  print_int(x);
+}
